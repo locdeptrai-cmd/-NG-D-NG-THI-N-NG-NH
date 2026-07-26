@@ -1,5 +1,9 @@
 # Hướng dẫn - Bản mobile offline (Flutter)
 
+**Một app offline chạy được trên Android + iOS** (cùng codebase).
+
+Xem tổng hợp nhanh: [`BUILD_MOBILE.md`](BUILD_MOBILE.md)
+
 ## Yêu cầu
 - Flutter SDK đã cài đặt
 - Android Studio (Android) / Xcode (iOS)
@@ -11,24 +15,33 @@ flutter pub get
 flutter run
 ```
 
-## Build Android
+## Build cả nền tảng (khuyến nghị)
+### Trên Windows (ra APK Android ngay)
+```bat
+build_mobile_offline.bat
+```
+
+### Trên GitHub (Android APK + iOS)
+Actions → **Build Mobile Offline (iOS + Android)** → Run workflow
+
+## Build Android riêng
 ```bash
 build_android_one_file.bat
 ```
 
-File cài đặt một file duy nhất:
+File:
 - `offline/dist/ATC_Offline_Mobile_Android.apk`
 
 ## Build iOS
 - Local Windows: **không** tạo được `.ipa`
-- **GitHub Actions**: được — xem `BUILD_IOS.md` mục "Build trên GitHub"
+- **GitHub Actions**: được — xem `BUILD_IOS.md` / `BUILD_MOBILE.md`
 - Local macOS:
 ```bash
 chmod +x build_ios_one_file.sh
 ./build_ios_one_file.sh
 ```
 
-File cài đặt:
+File:
 - `offline/dist/ATC_Offline_Mobile_iOS.ipa`
 
 ## DB offline

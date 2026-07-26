@@ -9,6 +9,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
+REM Java 26+ chua tuong thich Gradle Flutter mac dinh; uu tien JDK 17 neu co.
+if exist "H:\jdk26\temurin-17\bin\java.exe" (
+  set "JAVA_HOME=H:\jdk26\temurin-17"
+  set "PATH=%JAVA_HOME%\bin;%PATH%"
+  flutter config --jdk-dir="H:\jdk26\temurin-17" >nul
+)
+
 if exist "..\data\offline_exam.db" (
   copy /Y "..\data\offline_exam.db" "assets\offline_exam.db" >nul
 )

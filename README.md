@@ -51,7 +51,23 @@ python manage.py import_questions "sup-bank.xlsx" --subject SUP
 - `exam_bank/services.py`: tao de ngau nhien theo ma tran
 - `exam_bank/management/commands/import_questions.py`: import CSV/XLSX
 
-## 5) Luu y
+## 5) Ban offline mobile (Android + iOS)
+
+Mot app Flutter dung chung:
+- `offline/mobile_flutter/`
+- Huong dan: `offline/mobile_flutter/BUILD_MOBILE.md`
+
+Build Android (Windows):
+```bat
+cd offline\mobile_flutter
+build_android_one_file.bat
+```
+File: `offline/dist/ATC_Offline_Mobile_Android.apk`
+
+Build iOS + Android tren GitHub Actions:
+- Workflow: **Build Mobile Offline (iOS + Android)**
+
+## 6) Luu y
 
 - Bo file cu `app_thi_thu_full.html`, `data.js` de doi chieu du lieu.
 - He thong moi luu cau hoi trong PostgreSQL, khong hard-code vao frontend.
