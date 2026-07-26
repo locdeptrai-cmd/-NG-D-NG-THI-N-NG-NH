@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+staticfiles/
+.tmp_import_*.xlsx
+.tmp_import_*.csv
+offline/windows/build/
+.sixth/

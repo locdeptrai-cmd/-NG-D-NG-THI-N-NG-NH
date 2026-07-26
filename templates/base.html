@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Hệ thống thi thử ATC{% endblock %}</title>
+  <style>
+    :root {
+      --blue: #0a2a66;
+      --white: #ffffff;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: var(--blue);
+      color: var(--white);
+    }
+    .wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; }
+    .card {
+      background: var(--blue);
+      border: 1px solid var(--white);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .question-card {
+      background: var(--white);
+      color: var(--blue);
+      border: 1px solid var(--white);
+    }
+    .question-card * { color: var(--blue); }
+    .btn {
+      background: var(--white);
+      color: var(--blue);
+      border: 1px solid var(--white);
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      font-weight: 700;
+    }
+    .btn.secondary {
+      background: var(--blue);
+      color: var(--white);
+      border: 1px solid var(--white);
+    }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .msg { padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--white); }
+    .msg.error, .msg.success { background: var(--blue); color: var(--white); }
+    .ok, .bad { color: var(--white); font-weight: 700; }
+    .small { color: var(--white); font-size: 14px; opacity: .9; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    input, select {
+      background: var(--blue);
+      color: var(--white);
+      border: 1px solid var(--white);
+      border-radius: 6px;
+      padding: 8px;
+    }
+    .question-card input, .question-card select { accent-color: var(--blue); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <h2>Hệ thống thi thử ATC</h2>
+      {% if request.user.is_authenticated %}
+      <div class="row">
+        <span class="small">{{ request.user.username }}</span>
+        <a class="btn secondary" href="{% url 'logout' %}">Đăng xuất</a>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if messages %}
+      {% for message in messages %}
+      <div class="msg {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

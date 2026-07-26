@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Chọn nhóm thi{% endblock %}
+{% block content %}
+<div class="card">
+  <h3>Chọn nhóm thi</h3>
+  <p class="small">Mỗi bài gồm {{ question_count }} câu hỏi.</p>
+  <form method="post">
+    {% csrf_token %}
+    {% for s in subjects %}
+    <p>
+      <label>
+        <input type="radio" name="group_code" value="{{ s.code }}" {% if forloop.first %}checked{% endif %}>
+        {{ s.code }} - {{ s.name }}
+      </label>
+    </p>
+    {% endfor %}
+    <button class="btn" type="submit">Bắt đầu thi</button>
+  </form>
+</div>
+{% endblock %}

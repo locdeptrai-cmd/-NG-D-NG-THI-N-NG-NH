@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Kết quả{% endblock %}
+{% block content %}
+<div class="card">
+  <h3>Kết quả</h3>
+  <p><b>Điểm:</b> {{ attempt.score }}/10</p>
+  <p><b>Số câu đúng:</b> {{ correct }}/{{ total }}</p>
+  <p><a class="btn" href="{% url 'start_exam' %}">Làm bài mới</a></p>
+</div>
+
+{% for d in detailed %}
+<div class="card question-card">
+  <p><b>Câu {{ d.order }}.</b> {{ d.question.content }}</p>
+  <p>{% if d.is_correct %}<span class="ok">Đúng</span>{% else %}<span class="bad">Sai</span>{% endif %}</p>
+  {% for ans in d.question.answers.all %}
+  <p>
+    {% if ans.id in d.selected_ids %}[Đã chọn]{% endif %}
+    <b>{{ ans.label }}.</b> {{ ans.content }}
+    {% if ans.is_correct %}<span class="ok">(Đáp án đúng)</span>{% endif %}
+  </p>
+  {% endfor %}
+  {% if d.question.explanation %}
+  <p class="small"><b>Giải thích:</b> {{ d.question.explanation }}</p>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}
