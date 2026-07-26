@@ -19,16 +19,17 @@ build_android_one_file.bat
 File cài đặt một file duy nhất:
 - `offline/dist/ATC_Offline_Mobile_Android.apk`
 
-## Build iOS (macOS)
+## Build iOS
+- Local Windows: **không** tạo được `.ipa`
+- **GitHub Actions**: được — xem `BUILD_IOS.md` mục "Build trên GitHub"
+- Local macOS:
 ```bash
 chmod +x build_ios_one_file.sh
 ./build_ios_one_file.sh
 ```
 
-File cài đặt một file duy nhất:
+File cài đặt:
 - `offline/dist/ATC_Offline_Mobile_iOS.ipa`
-
-Lưu ý: iOS bắt buộc build trên macOS và phải cấu hình signing bằng Apple Developer/Xcode.
 
 ## DB offline
 App dùng DB SQLite local từ assets:

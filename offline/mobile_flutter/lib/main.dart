@@ -46,6 +46,8 @@ class AItem {
 }
 
 class OfflineDb {
+  // Bump when shipping a new bundled question bank so devices refresh assets.
+  static const String assetDbVersion = '2026-07-26-sup';
   static Database? _db;
 
   static Future<Database> open() async {
@@ -53,12 +55,17 @@ class OfflineDb {
 
     final dbDir = await getDatabasesPath();
     final dbPath = p.join(dbDir, 'offline_exam.db');
+    final markerPath = p.join(dbDir, 'offline_exam.version');
+    final marker = File(markerPath);
+    final needsCopy = !await databaseExists(dbPath) ||
+        !await marker.exists() ||
+        (await marker.readAsString()).trim() != assetDbVersion;
 
-    final exists = await databaseExists(dbPath);
-    if (!exists) {
+    if (needsCopy) {
       final data = await rootBundle.load('assets/offline_exam.db');
       final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
       await File(dbPath).writeAsBytes(bytes, flush: true);
+      await marker.writeAsString(assetDbVersion, flush: true);
     }
 
     _db = await openDatabase(dbPath, readOnly: true);
@@ -135,12 +142,19 @@ class _StartPageState extends State<StartPage> {
             const Text('Thi thử offline', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             const Text('Chọn nhóm đề', style: TextStyle(color: Colors.white, fontSize: 16)),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Radio<String>(value: 'APS', groupValue: group, onChanged: (v) => setState(() => group = v!)),
-                const Text('APS', style: TextStyle(color: Colors.white)),
-                Radio<String>(value: 'ADC', groupValue: group, onChanged: (v) => setState(() => group = v!)),
-                const Text('ADC', style: TextStyle(color: Colors.white)),
+                for (final code in const ['APS', 'ADC', 'SUP']) ...[
+                  Radio<String>(
+                    value: code,
+                    groupValue: group,
+                    onChanged: (v) => setState(() => group = v!),
+                  ),
+                  Text(code, style: const TextStyle(color: Colors.white)),
+                ],
               ],
             ),
             ElevatedButton(

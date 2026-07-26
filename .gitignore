@@ -7,3 +7,8 @@ staticfiles/
 .tmp_import_*.csv
 offline/windows/build/
 .sixth/
+
+offline/mobile_flutter/.dart_tool/
+offline/mobile_flutter/.idea/
+offline/mobile_flutter/build/
+
