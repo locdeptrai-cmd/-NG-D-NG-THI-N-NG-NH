@@ -2,3 +2,6 @@
 [   44659ms] [VERBOSE] [DOM] Password forms should have (optionally hidden) username fields for accessibility: (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:8080/:0
 [   86948ms] [VERBOSE] [DOM] Password forms should have (optionally hidden) username fields for accessibility: (More info: https://goo.gl/9p2vKq) %o @ http://127.0.0.1:8080/:0
 [  188629ms] [LOG] Using WasmStorageImplementation.sharedIndexedDb due to missing browser features: {MissingBrowserFeature.dedicatedWorkersInSharedWorkers, MissingBrowserFeature.sharedArrayBuffers} @ http://127.0.0.1:8080/main.dart.js:30405
+[  195092ms] [ERROR] Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ http://127.0.0.1:8000/api/health/:0
+[  198046ms] [LOG] Using WasmStorageImplementation.sharedIndexedDb due to missing browser features: {MissingBrowserFeature.dedicatedWorkersInSharedWorkers, MissingBrowserFeature.sharedArrayBuffers} @ http://127.0.0.1:8080/main.dart.js:30405
+[  198116ms] [ERROR] Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ http://127.0.0.1:8000/api/health/:0
