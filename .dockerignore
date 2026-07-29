@@ -1,0 +1,13 @@
+.git
+.github
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+output
+staticfiles
+offline/mobile_flutter/.dart_tool
+offline/mobile_flutter/build
+offline/mobile_flutter/android/build
+offline/mobile_flutter/ios/Pods
+dist_package
