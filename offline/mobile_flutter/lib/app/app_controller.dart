@@ -232,8 +232,19 @@ class AppController extends StateNotifier<AppState> {
   Future<List<LocalAttempt>> attempts() => _repository.getAttempts();
 
   Future<void> setBaseUrl(String value) async {
-    await _repository.setBaseUrl(value);
-    await checkOnline();
+    state = state.copyWith(busy: true, clearError: true);
+    try {
+      await _repository.setBaseUrl(value);
+      final online = await _repository.isOnline();
+      state = state.copyWith(busy: false, online: online);
+    } on FormatException catch (error) {
+      state = state.copyWith(busy: false, error: error.message);
+    } catch (_) {
+      state = state.copyWith(
+        busy: false,
+        error: 'Không lưu được địa chỉ máy chủ.',
+      );
+    }
   }
 
   Future<void> logout() async {

@@ -48,6 +48,14 @@ class ApiClient {
     while (normalized.endsWith('/')) {
       normalized = normalized.substring(0, normalized.length - 1);
     }
+    final uri = Uri.tryParse(normalized);
+    if (uri == null ||
+        !const {'http', 'https'}.contains(uri.scheme) ||
+        uri.host.isEmpty) {
+      throw const FormatException(
+        'Địa chỉ máy chủ phải bắt đầu bằng http:// hoặc https://.',
+      );
+    }
     if (!normalized.endsWith('/api')) {
       normalized = '$normalized/api';
     }
