@@ -5,3 +5,5 @@
 [  195092ms] [ERROR] Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ http://127.0.0.1:8000/api/health/:0
 [  198046ms] [LOG] Using WasmStorageImplementation.sharedIndexedDb due to missing browser features: {MissingBrowserFeature.dedicatedWorkersInSharedWorkers, MissingBrowserFeature.sharedArrayBuffers} @ http://127.0.0.1:8080/main.dart.js:30405
 [  198116ms] [ERROR] Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ http://127.0.0.1:8000/api/health/:0
+[  374566ms] [LOG] Using WasmStorageImplementation.sharedIndexedDb due to missing browser features: {MissingBrowserFeature.dedicatedWorkersInSharedWorkers, MissingBrowserFeature.sharedArrayBuffers} @ http://127.0.0.1:8080/main.dart.js:30405
+[  410796ms] [LOG] Using WasmStorageImplementation.sharedIndexedDb due to missing browser features: {MissingBrowserFeature.dedicatedWorkersInSharedWorkers, MissingBrowserFeature.sharedArrayBuffers} @ http://127.0.0.1:8080/main.dart.js:30405

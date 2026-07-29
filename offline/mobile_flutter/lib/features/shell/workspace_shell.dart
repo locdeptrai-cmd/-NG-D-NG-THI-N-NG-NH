@@ -58,7 +58,10 @@ class _WorkspaceShellState extends ConsumerState<WorkspaceShell> {
               final desktop = constraints.maxWidth >= 900;
               final content = Column(
                 children: [
-                  _WorkspaceHeader(state: state),
+                  _WorkspaceHeader(
+                    state: state,
+                    onSettings: () => setState(() => index = 5),
+                  ),
                   Expanded(
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 260),
@@ -118,27 +121,81 @@ class _WorkspaceShellState extends ConsumerState<WorkspaceShell> {
         ),
       ),
       bottomNavigationBar: MediaQuery.sizeOf(context).width < 900
-          ? NavigationBar(
+          ? _MobileNavigation(
               selectedIndex: index,
-              onDestinationSelected: (value) => setState(() => index = value),
-              destinations: [
-                for (final item in destinations)
-                  NavigationDestination(
-                    icon: Icon(item.$1),
-                    selectedIcon: Icon(item.$2),
-                    label: item.$3,
-                  ),
-              ],
+              destinations: destinations.take(5).toList(),
+              onSelected: (value) => setState(() => index = value),
             )
           : null,
     );
   }
 }
 
+class _MobileNavigation extends StatelessWidget {
+  const _MobileNavigation({
+    required this.selectedIndex,
+    required this.destinations,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final List<(IconData, IconData, String)> destinations;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return BottomAppBar(
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [
+          for (var index = 0; index < destinations.length; index++)
+            Expanded(
+              child: InkWell(
+                onTap: () => onSelected(index),
+                borderRadius: BorderRadius.circular(14),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        selectedIndex == index
+                            ? destinations[index].$2
+                            : destinations[index].$1,
+                        color:
+                            selectedIndex == index ? atcCyan : Colors.white70,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        destinations[index].$3,
+                        maxLines: 1,
+                        overflow: TextOverflow.fade,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color:
+                              selectedIndex == index ? atcCyan : Colors.white60,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _WorkspaceHeader extends ConsumerWidget {
-  const _WorkspaceHeader({required this.state});
+  const _WorkspaceHeader({
+    required this.state,
+    required this.onSettings,
+  });
 
   final AppState state;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -174,12 +231,18 @@ class _WorkspaceHeader extends ConsumerWidget {
             ),
           ],
           const SizedBox(width: 10),
-          CircleAvatar(
-            backgroundColor: atcCyan.withValues(alpha: 0.16),
-            child: Text(
-              (state.user?.displayName ?? 'O').substring(0, 1).toUpperCase(),
-              style:
-                  const TextStyle(color: atcCyan, fontWeight: FontWeight.w800),
+          IconButton(
+            onPressed: onSettings,
+            tooltip: 'Cài đặt và tài khoản',
+            icon: CircleAvatar(
+              backgroundColor: atcCyan.withValues(alpha: 0.16),
+              child: Text(
+                (state.user?.displayName ?? 'O').substring(0, 1).toUpperCase(),
+                style: const TextStyle(
+                  color: atcCyan,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ),
         ],

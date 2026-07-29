@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'atc-exam-shell-v2';
+const CACHE_NAME = 'atc-exam-shell-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -11,6 +11,15 @@ const APP_SHELL = [
   './favicon.png',
   './sqlite3.wasm',
   './drift_worker.js',
+  './canvaskit/canvaskit.js',
+  './canvaskit/canvaskit.wasm',
+  './canvaskit/chromium/canvaskit.js',
+  './canvaskit/chromium/canvaskit.wasm',
+  './assets/AssetManifest.bin',
+  './assets/FontManifest.json',
+  './assets/fonts/MaterialIcons-Regular.otf',
+  './assets/shaders/ink_sparkle.frag',
+  './assets/shaders/stretch_effect.frag',
   './icons/Icon-192.png',
   './icons/Icon-512.png',
   './icons/Icon-maskable-192.png',
