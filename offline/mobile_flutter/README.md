@@ -1,60 +1,55 @@
-# Hướng dẫn - Bản mobile offline (Flutter)
+# ATC Exam PWA / Mobile
 
-**Một app offline chạy được trên Android + iOS** (cùng codebase).
+Ứng dụng Flutter offline-first dùng chung cho Web/PWA, Android và iOS.
+Dữ liệu câu hỏi được tải từ Django REST API và lưu bằng Drift:
 
-Xem tổng hợp nhanh: [`BUILD_MOBILE.md`](BUILD_MOBILE.md)
+- Web: IndexedDB/OPFS thông qua SQLite WebAssembly.
+- Android/iOS: SQLite trong vùng dữ liệu ứng dụng.
+- Kết quả được lưu local trước, sau đó đưa vào `sync_queue`.
 
-## Yêu cầu
-- Flutter SDK đã cài đặt
-- Android Studio (Android) / Xcode (iOS)
+## Chạy Web/PWA
 
-## Chạy thử
 ```bash
-cd offline/mobile_flutter
 flutter pub get
-flutter run
+dart run build_runner build --delete-conflicting-outputs
+flutter run -d chrome --dart-define=ATC_API_BASE_URL=http://127.0.0.1:8000/api
 ```
 
-## Build cả nền tảng (khuyến nghị)
-### Trên Windows (ra APK Android ngay)
+Build production:
+
+```bash
+flutter build web --release --dart-define=ATC_API_BASE_URL=https://example.com/api
+```
+
+Không mở `build/web/index.html` bằng `file://`; hãy phục vụ qua HTTP/HTTPS.
+
+## Chạy mobile
+
+Trên Windows:
+
 ```bat
 build_mobile_offline.bat
 ```
 
-### Trên GitHub (Android APK + iOS)
-Actions → **Build Mobile Offline (iOS + Android)** → Run workflow
+GitHub Actions: chạy workflow **Build Mobile Offline (iOS + Android)**.
 
-## Build Android riêng
-```bash
-build_android_one_file.bat
+## API và dữ liệu
+
+Ngân hàng câu hỏi được lấy từ:
+
+```text
+GET /api/question-packages/
+GET /api/question-packages/{package_id}/download/
+POST /api/sync/
 ```
 
-File:
-- `offline/dist/ATC_Offline_Mobile_Android.apk`
+File `assets/questions.json` chỉ được giữ để đối chiếu dữ liệu cũ; runtime PWA
+không nạp toàn bộ ngân hàng vào service worker.
 
-## Build iOS
-- Local Windows: **không** tạo được `.ipa`
-- **GitHub Actions**: được — xem `BUILD_IOS.md` / `BUILD_MOBILE.md`
-- Local macOS:
+## Kiểm tra
+
 ```bash
-chmod +x build_ios_one_file.sh
-./build_ios_one_file.sh
+flutter analyze
+flutter test
+flutter build web --release
 ```
-
-File:
-- `offline/dist/ATC_Offline_Mobile_iOS.ipa`
-
-## DB offline
-App dùng DB SQLite local từ assets:
-- `assets/offline_exam.db`
-
-Khi cập nhật ngân hàng câu hỏi từ web DB:
-1. Tạo lại DB offline:
-```bash
-python ..\\build_offline_db.py
-```
-2. Copy DB mới vào assets:
-```bash
-copy ..\\data\\offline_exam.db assets\\offline_exam.db
-```
-3. Build lại app bằng `build_android_one_file.bat` hoặc `build_ios_one_file.sh`.

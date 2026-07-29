@@ -67,7 +67,28 @@ File: `offline/dist/ATC_Offline_Mobile_Android.apk`
 Build iOS + Android tren GitHub Actions:
 - Workflow: **Build Mobile Offline (iOS + Android)**
 
-## 6) Luu y
+## 6) PWA offline-first
+
+Backend cung cap REST API JWT tai `/api/`:
+- `/api/health/`
+- `/api/auth/login/`, `/api/auth/refresh/`, `/api/auth/me/`
+- `/api/subjects/`, `/api/categories/`
+- `/api/question-packages/` va API download
+- `/api/practice/`, `/api/exams/`, `/api/results/`, `/api/sync/`
+
+Frontend PWA nam tai `offline/mobile_flutter/`, dung Drift de luu SQLite
+native va IndexedDB/OPFS tren Web. Build:
+
+```bash
+cd offline/mobile_flutter
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+flutter build web --release
+```
+
+Workflow **Build ATC Exam PWA** se analyze, test, build va tao artifact.
+
+## 7) Luu y
 
 - Bo file cu `app_thi_thu_full.html`, `data.js` de doi chieu du lieu.
 - He thong moi luu cau hoi trong PostgreSQL, khong hard-code vao frontend.

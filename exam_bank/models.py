@@ -105,6 +105,26 @@ class Answer(models.Model):
         return f"{self.question.code} - {self.label}"
 
 
+class QuestionPackage(models.Model):
+    package_id = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=255)
+    subject = models.OneToOneField(
+        Subject,
+        on_delete=models.CASCADE,
+        related_name="question_package",
+    )
+    version = models.PositiveBigIntegerField(default=1)
+    checksum = models.CharField(max_length=80, blank=True)
+    minimum_app_version = models.CharField(max_length=30, default="1.0.0")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["subject__code"]
+
+    def __str__(self):
+        return f"{self.package_id} v{self.version}"
+
+
 class QuestionVersion(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="versions")
     version_number = models.PositiveIntegerField()
@@ -167,6 +187,74 @@ class AttemptAnswer(models.Model):
 
     class Meta:
         unique_together = ("attempt", "question")
+
+
+class PracticeAttempt(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="practice_attempts",
+    )
+    local_attempt_id = models.CharField(max_length=100)
+    client_id = models.CharField(max_length=100, blank=True)
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.PROTECT,
+        related_name="practice_attempts",
+    )
+    started_at = models.DateTimeField()
+    completed_at = models.DateTimeField()
+    score = models.DecimalField(max_digits=5, decimal_places=2)
+    total_questions = models.PositiveIntegerField(default=0)
+    correct_answers = models.PositiveIntegerField(default=0)
+    answers = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "local_attempt_id"],
+                name="unique_user_local_practice_attempt",
+            )
+        ]
+        ordering = ["-completed_at", "-id"]
+
+
+class SyncOperation(models.Model):
+    STATUS_COMPLETED = "completed"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = [
+        (STATUS_COMPLETED, "Completed"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="sync_operations",
+    )
+    client_id = models.CharField(max_length=100)
+    operation_id = models.CharField(max_length=100)
+    operation_type = models.CharField(max_length=100)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_COMPLETED,
+    )
+    payload = models.JSONField(default=dict, blank=True)
+    server_reference = models.CharField(max_length=100, blank=True)
+    last_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "client_id", "operation_id"],
+                name="unique_user_client_sync_operation",
+            )
+        ]
+        ordering = ["-created_at", "-id"]
 
 
 class AuditLog(models.Model):
