@@ -1,0 +1,162 @@
+- generic [active] [ref=f32e1]:
+  - generic [ref=f32e2]:
+    - generic [ref=f32e3]:
+      - banner [ref=f32e4]:
+        - generic [ref=f32e5]:
+          - link [ref=f32e7] [cursor=pointer]:
+            - /url: /
+            - img "Render" [ref=f32e8]
+          - button "M My Workspace" [ref=f32e12] [cursor=pointer]:
+            - generic [ref=f32e13]:
+              - generic [ref=f32e14]: M
+              - generic "My Workspace" [ref=f32e15]
+        - generic [ref=f32e20]:
+          - navigation [ref=f32e21]:
+            - list [ref=f32e22]:
+              - listitem [ref=f32e23]:
+                - link "atc-exam-api" [ref=f32e319] [cursor=pointer]:
+                  - /url: /web/srv-d9l1bg61egvs738i993g
+                - button [ref=f32e324] [cursor=pointer]
+          - button "Search Ctrl + K" [ref=f32e41] [cursor=pointer]:
+            - text: Search
+            - generic [ref=f32e45]:
+              - generic [ref=f32e48]: Ctrl
+              - generic [ref=f32e49]: +
+              - generic [ref=f32e50]: K
+              - generic [ref=f32e51]: K
+        - generic [ref=f32e52]:
+          - button "New" [ref=f32e54] [cursor=pointer]
+          - button "Upgrade" [ref=f32e196] [cursor=pointer]
+          - button [ref=f32e60] [cursor=pointer]:
+            - img "Help" [ref=f32e61]
+          - button "n" [ref=f32e66] [cursor=pointer]
+      - generic [ref=f32e69]:
+        - navigation [ref=f32e70]:
+          - separator [ref=f32e71]
+          - generic [ref=f32e72]:
+            - generic [ref=f32e73]:
+              - link "Dashboard" [ref=f32e327] [cursor=pointer]:
+                - /url: /
+              - generic [ref=f32e78]: atc-exam-api
+            - generic [ref=f32e85]:
+              - list [ref=f32e330]:
+                - listitem [ref=f32e331]:
+                  - link "Events" [ref=f32e332] [cursor=pointer]:
+                    - /url: /web/srv-d9l1bg61egvs738i993g/events
+                - listitem [ref=f32e341]:
+                  - link "Settings" [ref=f32e342] [cursor=pointer]:
+                    - /url: /web/srv-d9l1bg61egvs738i993g/settings
+              - generic [ref=f32e347]:
+                - generic [ref=f32e348]: Monitor
+                - list "Monitor" [ref=f32e349]:
+                  - listitem [ref=f32e350]:
+                    - link "Logs" [ref=f32e351] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/logs
+                  - listitem [ref=f32e358]:
+                    - link "Metrics" [ref=f32e359] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/metrics
+              - generic [ref=f32e363]:
+                - generic [ref=f32e364]: Manage
+                - list "Manage" [ref=f32e365]:
+                  - listitem [ref=f32e366]:
+                    - link "Environment" [ref=f32e367] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/env
+                  - listitem [ref=f32e373]:
+                    - link "Shell" [ref=f32e374] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/shell
+                      - generic [ref=f32e379]:
+                        - generic [ref=f32e380]: Shell
+                        - status [ref=f32e383]
+                  - listitem [ref=f32e386]:
+                    - link "Scaling" [ref=f32e387] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/scaling
+                      - generic [ref=f32e393]:
+                        - generic [ref=f32e394]: Scaling
+                        - status [ref=f32e397]
+                  - listitem [ref=f32e400]:
+                    - link "Previews" [ref=f32e401] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/previews
+                  - listitem [ref=f32e407]:
+                    - link "Disk" [ref=f32e408] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/disks
+                      - generic [ref=f32e414]:
+                        - generic [ref=f32e415]: Disk
+                        - status [ref=f32e418]
+                  - listitem [ref=f32e421]:
+                    - link "One-Off Jobs" [ref=f32e422] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/jobs
+                      - generic [ref=f32e429]:
+                        - generic [ref=f32e430]: One-Off Jobs
+                        - status [ref=f32e433]
+          - generic [ref=f32e104]:
+            - alert [ref=f32e436]:
+              - generic [ref=f32e442]:
+                - generic [ref=f32e443]:
+                  - generic [ref=f32e444]: New plans, zero seat fees
+                  - generic [ref=f32e445]: We're updating workspace pricing to help teams grow faster. No seat fees, more self-serve features, granular bandwidth billing, and more.
+                - link "Opt-in early" [ref=f32e447] [cursor=pointer]:
+                  - /url: /billing/update-plan
+              - button "Close notification" [ref=f32e448] [cursor=pointer]
+            - generic [ref=f32e105]:
+              - button "Collapse items" [expanded] [ref=f32e106] [cursor=pointer]
+              - list "Footer navigation" [ref=f32e109]:
+                - listitem [ref=f32e110]:
+                  - link "Changelog" [ref=f32e111] [cursor=pointer]:
+                    - /url: https://render.com/changelog
+                - listitem [ref=f32e118]:
+                  - link "Invite a friend" [ref=f32e119] [cursor=pointer]:
+                    - /url: /invites
+                - listitem [ref=f32e123]:
+                  - button "Contact support" [ref=f32e124] [cursor=pointer]
+              - link "Render Status" [ref=f32e131] [cursor=pointer]:
+                - /url: https://status.render.com
+        - generic [ref=f32e451]:
+          - banner [ref=f32e453]:
+            - generic [ref=f32e454]:
+              - generic [ref=f32e455]: Web Service
+              - generic [ref=f32e459]:
+                - heading "atc-exam-api Python 3 Free Upgrade your instance Blueprint managed" [level=1] [ref=f32e461]:
+                  - generic [ref=f32e462]: atc-exam-api
+                  - generic [ref=f32e463]:
+                    - generic [ref=f32e464]: Python 3
+                    - link "Free" [ref=f32e465] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/plan
+                    - link [ref=f32e467] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/plan
+                    - link "Blueprint managed" [ref=f32e473] [cursor=pointer]:
+                      - /url: /blueprint/exs-d9l1asrm8hqs7392a8g0
+                - generic [ref=f32e481]:
+                  - button "Connect" [ref=f32e482] [cursor=pointer]
+                  - button "Manual Deploy" [ref=f32e486] [cursor=pointer]
+            - generic [ref=f32e492]:
+              - generic [ref=f32e494]:
+                - generic [ref=f32e495]: "Service ID:"
+                - generic "Service ID:" [ref=f32e496]:
+                  - generic [ref=f32e497]: srv-d9l1bg61egvs738i993g
+                  - button "Copy" [ref=f32e500] [cursor=pointer]
+              - generic [ref=f32e505]:
+                - img "GitHub" [ref=f32e507]
+                - link "locdeptrai-cmd / -NG-D-NG-THI-N-NG-NH main" [ref=f32e509] [cursor=pointer]:
+                  - /url: https://github.com/locdeptrai-cmd/-NG-D-NG-THI-N-NG-NH/tree/main
+                  - generic [ref=f32e510]:
+                    - generic [ref=f32e511]: locdeptrai-cmd / -NG-D-NG-THI-N-NG-NH
+                    - generic [ref=f32e514]: main
+              - generic "Copy" [ref=f32e516]:
+                - link "https://atc-exam-api.onrender.com" [ref=f32e518] [cursor=pointer]:
+                  - /url: https://atc-exam-api.onrender.com
+                - button "Copy" [ref=f32e521] [cursor=pointer]
+          - main
+    - generic:
+      - generic:
+        - generic: "0 services selected:"
+        - generic:
+          - generic:
+            - button:
+              - generic: Move
+      - generic:
+        - separator
+        - generic:
+          - generic:
+            - button
+  - iframe [ref=f32e189]:
+    
