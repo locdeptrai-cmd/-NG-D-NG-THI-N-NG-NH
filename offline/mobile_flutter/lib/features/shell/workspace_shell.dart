@@ -52,6 +52,18 @@ class _WorkspaceShellState extends ConsumerState<WorkspaceShell> {
     });
     return Scaffold(
       body: AtcBackdrop(
+        imageAsset: 'assets/images/home-bg.png',
+        imageAlignment: Alignment.center,
+        imageOpacity: 0.78,
+        showRadar: false,
+        scrimGradient: RadialGradient(
+          center: const Alignment(0.72, -0.12),
+          radius: 1.35,
+          colors: [
+            atcNavy.withValues(alpha: 0.58),
+            atcNavy.withValues(alpha: 0.82),
+          ],
+        ),
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {

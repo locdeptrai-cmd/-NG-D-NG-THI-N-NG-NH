@@ -8,6 +8,7 @@ staticfiles/
 offline/windows/build/
 .sixth/
 output/playwright/
+.playwright-cli/
 /login-bg2.png
 /home-bg.png
 

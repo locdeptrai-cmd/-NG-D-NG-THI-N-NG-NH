@@ -8,9 +8,19 @@ class AtcBackdrop extends StatelessWidget {
   const AtcBackdrop({
     super.key,
     required this.child,
+    this.imageAsset,
+    this.imageAlignment = Alignment.center,
+    this.imageOpacity = 1,
+    this.scrimGradient,
+    this.showRadar = true,
   });
 
   final Widget child;
+  final String? imageAsset;
+  final Alignment imageAlignment;
+  final double imageOpacity;
+  final Gradient? scrimGradient;
+  final bool showRadar;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +28,30 @@ class AtcBackdrop extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         const ColoredBox(color: atcNavy),
-        const IgnorePointer(child: CustomPaint(painter: _RadarPainter())),
+        if (imageAsset != null)
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 1.035, end: 1),
+            duration: const Duration(milliseconds: 900),
+            curve: Curves.easeOutCubic,
+            builder: (context, scale, child) {
+              return Transform.scale(scale: scale, child: child);
+            },
+            child: Opacity(
+              opacity: imageOpacity,
+              child: Image.asset(
+                imageAsset!,
+                fit: BoxFit.cover,
+                alignment: imageAlignment,
+                filterQuality: FilterQuality.high,
+              ),
+            ),
+          ),
+        if (scrimGradient != null)
+          DecoratedBox(
+            decoration: BoxDecoration(gradient: scrimGradient),
+          ),
+        if (showRadar)
+          const IgnorePointer(child: CustomPaint(painter: _RadarPainter())),
         child,
       ],
     );

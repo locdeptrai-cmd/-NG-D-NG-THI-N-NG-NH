@@ -29,8 +29,33 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(appControllerProvider);
+    final wideScreen = MediaQuery.sizeOf(context).width >= 760;
     return Scaffold(
       body: AtcBackdrop(
+        imageAsset: 'assets/images/login-bg2.png',
+        imageAlignment:
+            wideScreen ? Alignment.centerLeft : const Alignment(0.6, 0),
+        imageOpacity: 0.96,
+        showRadar: false,
+        scrimGradient: wideScreen
+            ? LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  atcNavy.withValues(alpha: 0.12),
+                  atcNavy.withValues(alpha: 0.48),
+                  atcNavy.withValues(alpha: 0.92),
+                ],
+                stops: const [0, 0.56, 1],
+              )
+            : LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  atcNavy.withValues(alpha: 0.56),
+                  atcNavy.withValues(alpha: 0.86),
+                ],
+              ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -40,11 +65,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final wide = constraints.maxWidth >= 760;
-                    final intro = _Intro(online: state.online);
+                    const intro = _Intro();
                     final form = _LoginForm(
                       formKey: _formKey,
                       username: _username,
                       password: _password,
+                      online: state.online,
                       apiBaseUrl:
                           ref.read(appControllerProvider.notifier).apiBaseUrl,
                       hidePassword: _hidePassword,
@@ -62,9 +88,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     if (wide) {
                       return Row(
                         children: [
-                          Expanded(flex: 6, child: intro),
-                          const SizedBox(width: 72),
-                          Expanded(flex: 4, child: form),
+                          const Expanded(flex: 6, child: SizedBox()),
+                          const SizedBox(width: 56),
+                          Expanded(
+                            flex: 4,
+                            child: _LoginSurface(child: form),
+                          ),
                         ],
                       );
                     }
@@ -72,8 +101,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         intro,
-                        const SizedBox(height: 42),
-                        form,
+                        const SizedBox(height: 28),
+                        _LoginSurface(child: form),
                       ],
                     );
                   },
@@ -160,9 +189,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 }
 
 class _Intro extends StatelessWidget {
-  const _Intro({required this.online});
-
-  final bool online;
+  const _Intro();
 
   @override
   Widget build(BuildContext context) {
@@ -216,14 +243,34 @@ class _Intro extends StatelessWidget {
                   color: Colors.white70,
                 ),
           ),
-          const SizedBox(height: 28),
-          StatusChip(
-            label: online ? 'Máy chủ sẵn sàng' : 'Đang ở chế độ ngoại tuyến',
-            active: online,
-            icon: online ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+        ],
+      ),
+    );
+  }
+}
+
+class _LoginSurface extends StatelessWidget {
+  const _LoginSurface({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: atcNavy.withValues(alpha: 0.86),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 32,
+            offset: const Offset(0, 18),
           ),
         ],
       ),
+      child: child,
     );
   }
 }
@@ -233,6 +280,7 @@ class _LoginForm extends StatelessWidget {
     required this.formKey,
     required this.username,
     required this.password,
+    required this.online,
     required this.apiBaseUrl,
     required this.hidePassword,
     required this.busy,
@@ -246,6 +294,7 @@ class _LoginForm extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController username;
   final TextEditingController password;
+  final bool online;
   final String apiBaseUrl;
   final bool hidePassword;
   final bool busy;
@@ -268,7 +317,13 @@ class _LoginForm extends StatelessWidget {
             'Kết nối lần đầu để tải dữ liệu dùng ngoại tuyến.',
             style: TextStyle(color: Colors.white60),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
+          StatusChip(
+            label: online ? 'Máy chủ sẵn sàng' : 'Đang ở chế độ ngoại tuyến',
+            active: online,
+            icon: online ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+          ),
+          const SizedBox(height: 8),
           TextButton.icon(
             onPressed: busy ? null : onConfigureServer,
             style: TextButton.styleFrom(
