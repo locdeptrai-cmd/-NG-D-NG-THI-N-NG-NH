@@ -88,7 +88,25 @@ flutter build web --release
 
 Workflow **Build ATC Exam PWA** se analyze, test, build va tao artifact.
 
-## 7) Luu y
+## 7) Backend production tren Render
+
+File `render.yaml` tao dong bo:
+
+- Django API tai `https://atc-exam-api.onrender.com`.
+- PostgreSQL tai region Singapore, chi cho phep ket noi noi bo.
+- Secret key ngau nhien, HTTPS, CORS cho GitHub Pages.
+- Import mot lan du lieu tu `dev.sqlite3` sang PostgreSQL sau deploy dau tien.
+
+Tren Render Dashboard, chon **New Blueprint Instance**, ket noi repository nay
+va ap dung `render.yaml`. Sau khi API hoat dong, dat GitHub Actions variable:
+
+```text
+ATC_API_BASE_URL=https://atc-exam-api.onrender.com/api
+```
+
+Roi chay lai workflow **Deploy ATC Exam PWA to GitHub Pages**.
+
+## 8) Luu y
 
 - Bo file cu `app_thi_thu_full.html`, `data.js` de doi chieu du lieu.
 - He thong moi luu cau hoi trong PostgreSQL, khong hard-code vao frontend.
