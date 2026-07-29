@@ -21,6 +21,8 @@ class QuestionRepository {
 
   Future<bool> isOnline() => _api.isOnline();
 
+  Future<bool> recoverDefaultServer() => _api.recoverDefaultBaseUrl();
+
   Future<bool> hasSession() => _api.hasSession();
 
   Future<UserProfile?> cachedUser() => _database.getCachedUser();

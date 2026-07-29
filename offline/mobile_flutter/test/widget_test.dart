@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:atc_offline_mobile/core/api/api_client.dart';
 import 'package:atc_offline_mobile/data/models/exam_models.dart';
 import 'package:atc_offline_mobile/ui/atc_theme.dart';
 import 'package:atc_offline_mobile/ui/status_chip.dart';
@@ -56,5 +57,27 @@ void main() {
 
     expect(find.text('Trực tuyến'), findsOneWidget);
     expect(find.byIcon(Icons.cloud_done_outlined), findsOneWidget);
+  });
+
+  test('hosted PWA rejects a saved localhost API URL', () {
+    expect(
+      ApiClient.isSavedBaseUrlUsable(
+        value: 'http://127.0.0.1:8000/api',
+        pageUri: Uri.parse('https://example.github.io/atc-exam/'),
+        isWeb: true,
+      ),
+      isFalse,
+    );
+  });
+
+  test('hosted PWA keeps a saved HTTPS API URL', () {
+    expect(
+      ApiClient.isSavedBaseUrlUsable(
+        value: 'https://api.example.com/api',
+        pageUri: Uri.parse('https://example.github.io/atc-exam/'),
+        isWeb: true,
+      ),
+      isTrue,
+    );
   });
 }

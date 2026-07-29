@@ -1,20 +1,23 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/exam_models.dart';
 
 class ApiClient {
+  static const _compiledBaseUrl = String.fromEnvironment(
+    'ATC_API_BASE_URL',
+    defaultValue: 'http://127.0.0.1:8000/api',
+  );
+
   ApiClient({
     Dio? dio,
     FlutterSecureStorage? secureStorage,
   })  : _dio = dio ?? Dio(),
         _secureStorage = secureStorage ?? const FlutterSecureStorage() {
     _dio.options
-      ..baseUrl = const String.fromEnvironment(
-        'ATC_API_BASE_URL',
-        defaultValue: 'http://127.0.0.1:8000/api',
-      )
+      ..baseUrl = _compiledBaseUrl
       ..connectTimeout = const Duration(seconds: 8)
       ..receiveTimeout = const Duration(seconds: 30);
   }
@@ -32,8 +35,33 @@ class ApiClient {
     final preferences = await SharedPreferences.getInstance();
     final savedUrl = preferences.getString(_baseUrlKey);
     if (savedUrl != null && savedUrl.isNotEmpty) {
-      _dio.options.baseUrl = _normalizeBaseUrl(savedUrl);
+      try {
+        final normalized = _normalizeBaseUrl(savedUrl);
+        if (_isUsableSavedUrl(normalized)) {
+          _dio.options.baseUrl = normalized;
+        } else {
+          await preferences.remove(_baseUrlKey);
+        }
+      } on FormatException {
+        await preferences.remove(_baseUrlKey);
+      }
     }
+  }
+
+  Future<bool> recoverDefaultBaseUrl() async {
+    final fallback = _normalizeBaseUrl(_compiledBaseUrl);
+    if (_dio.options.baseUrl == fallback) return false;
+
+    final previous = _dio.options.baseUrl;
+    _dio.options.baseUrl = fallback;
+    if (await isOnline()) {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.remove(_baseUrlKey);
+      return true;
+    }
+
+    _dio.options.baseUrl = previous;
+    return false;
   }
 
   Future<void> setBaseUrl(String value) async {
@@ -60,6 +88,34 @@ class ApiClient {
       normalized = '$normalized/api';
     }
     return normalized;
+  }
+
+  bool _isUsableSavedUrl(String value) {
+    return isSavedBaseUrlUsable(
+      value: value,
+      pageUri: Uri.base,
+      isWeb: kIsWeb,
+    );
+  }
+
+  @visibleForTesting
+  static bool isSavedBaseUrlUsable({
+    required String value,
+    required Uri pageUri,
+    required bool isWeb,
+  }) {
+    if (!isWeb) return true;
+    final savedUri = Uri.parse(value);
+    if (pageUri.scheme == 'https' && savedUri.scheme != 'https') return false;
+    if (_isLoopbackHost(savedUri.host) && !_isLoopbackHost(pageUri.host)) {
+      return false;
+    }
+    return true;
+  }
+
+  static bool _isLoopbackHost(String host) {
+    return const {'localhost', '127.0.0.1', '::1', '0.0.0.0'}
+        .contains(host.toLowerCase());
   }
 
   Future<bool> hasSession() async {

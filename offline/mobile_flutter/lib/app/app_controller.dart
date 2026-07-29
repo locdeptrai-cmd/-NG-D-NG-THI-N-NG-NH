@@ -91,7 +91,10 @@ class AppController extends StateNotifier<AppState> {
   Future<void> initialize() async {
     await _repository.initialize();
     await _loadLocal();
-    final online = await _repository.isOnline();
+    var online = await _repository.isOnline();
+    if (!online) {
+      online = await _repository.recoverDefaultServer();
+    }
     final hasSession = await _repository.hasSession();
     final user = await _repository.cachedUser();
     state = state.copyWith(
