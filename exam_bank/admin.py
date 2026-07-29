@@ -8,10 +8,13 @@ from .models import (
     Document,
     Exam,
     ExamQuestion,
+    PracticeAttempt,
     Question,
+    QuestionPackage,
     QuestionVersion,
     Role,
     Subject,
+    SyncOperation,
     User,
 )
 
@@ -44,4 +47,7 @@ admin.site.register(Exam)
 admin.site.register(ExamQuestion)
 admin.site.register(Attempt)
 admin.site.register(AttemptAnswer)
+admin.site.register(PracticeAttempt)
+admin.site.register(QuestionPackage)
+admin.site.register(SyncOperation)
 admin.site.register(AuditLog)
