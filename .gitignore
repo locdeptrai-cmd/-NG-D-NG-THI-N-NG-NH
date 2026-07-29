@@ -7,6 +7,9 @@ staticfiles/
 .tmp_import_*.csv
 offline/windows/build/
 .sixth/
+output/playwright/
+/login-bg2.png
+/home-bg.png
 
 offline/mobile_flutter/.dart_tool/
 offline/mobile_flutter/.idea/
