@@ -16,3 +16,15 @@
 127.0.0.1 - - [29/Jul/2026 20:28:28] "GET /icons/Icon-512.png HTTP/1.1" 200 -
 127.0.0.1 - - [29/Jul/2026 20:28:28] "GET /icons/Icon-maskable-192.png HTTP/1.1" 200 -
 127.0.0.1 - - [29/Jul/2026 20:28:28] "GET /icons/Icon-maskable-512.png HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jul/2026 20:31:35] "GET / HTTP/1.1" 304 -
+127.0.0.1 - - [29/Jul/2026 20:31:35] "GET /assets/FontManifest.json HTTP/1.1" 304 -
+127.0.0.1 - - [29/Jul/2026 20:31:35] "GET /assets/fonts/MaterialIcons-Regular.otf HTTP/1.1" 304 -
+127.0.0.1 - - [29/Jul/2026 20:31:37] "GET /atc_service_worker.js HTTP/1.1" 304 -
+127.0.0.1 - - [29/Jul/2026 20:31:46] "GET /atc_service_worker.js HTTP/1.1" 304 -
+127.0.0.1 - - [29/Jul/2026 20:32:16] "GET /atc_service_worker.js HTTP/1.1" 304 -
+127.0.0.1 - - [29/Jul/2026 20:34:40] "GET / HTTP/1.1" 304 -
+127.0.0.1 - - [29/Jul/2026 20:34:43] "GET /atc_service_worker.js HTTP/1.1" 304 -
+127.0.0.1 - - [29/Jul/2026 20:35:12] "GET /atc_service_worker.js HTTP/1.1" 304 -
+127.0.0.1 - - [29/Jul/2026 20:35:17] "GET / HTTP/1.1" 304 -
+127.0.0.1 - - [29/Jul/2026 20:35:19] "GET /atc_service_worker.js HTTP/1.1" 304 -
+127.0.0.1 - - [29/Jul/2026 20:35:48] "GET /atc_service_worker.js HTTP/1.1" 304 -
