@@ -1,0 +1,200 @@
+- generic [active] [ref=f18e1]:
+  - generic [ref=f18e2]:
+    - generic [ref=f18e3]:
+      - banner [ref=f18e4]:
+        - generic [ref=f18e5]:
+          - link [ref=f18e7] [cursor=pointer]:
+            - /url: /
+            - img "Render" [ref=f18e8]
+          - button "M My Workspace" [ref=f18e12] [cursor=pointer]:
+            - generic [ref=f18e13]:
+              - generic [ref=f18e14]: M
+              - generic "My Workspace" [ref=f18e15]
+        - generic [ref=f18e20]:
+          - navigation [ref=f18e21]:
+            - list [ref=f18e22]:
+              - listitem [ref=f18e23]:
+                - link "atc-exam-api" [ref=f18e498] [cursor=pointer]:
+                  - /url: /web/srv-d9l1bg61egvs738i993g
+                - button [ref=f18e502] [cursor=pointer]
+          - button "Search Ctrl + K" [ref=f18e40] [cursor=pointer]:
+            - text: Search
+            - generic [ref=f18e44]:
+              - generic [ref=f18e47]: Ctrl
+              - generic [ref=f18e48]: +
+              - generic [ref=f18e49]: K
+              - generic [ref=f18e50]: K
+        - generic [ref=f18e51]:
+          - button "New" [ref=f18e53] [cursor=pointer]
+          - button "Upgrade" [ref=f18e59] [cursor=pointer]
+          - button [ref=f18e65] [cursor=pointer]:
+            - img "Help" [ref=f18e66]
+          - button "n" [ref=f18e71] [cursor=pointer]
+      - generic [ref=f18e74]:
+        - navigation [ref=f18e75]:
+          - separator [ref=f18e76]
+          - generic [ref=f18e77]:
+            - generic [ref=f18e78]:
+              - link "Dashboard" [ref=f18e260] [cursor=pointer]:
+                - /url: /
+              - generic [ref=f18e83]: atc-exam-api
+            - generic [ref=f18e90]:
+              - list [ref=f18e263]:
+                - listitem [ref=f18e264]:
+                  - link "Events" [ref=f18e265] [cursor=pointer]:
+                    - /url: /web/srv-d9l1bg61egvs738i993g/events
+                - listitem [ref=f18e274]:
+                  - link "Settings" [ref=f18e275] [cursor=pointer]:
+                    - /url: /web/srv-d9l1bg61egvs738i993g/settings
+              - generic [ref=f18e280]:
+                - generic [ref=f18e281]: Monitor
+                - list "Monitor" [ref=f18e282]:
+                  - listitem [ref=f18e283]:
+                    - link "Logs" [ref=f18e284] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/logs
+                  - listitem [ref=f18e291]:
+                    - link "Metrics" [ref=f18e292] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/metrics
+              - generic [ref=f18e296]:
+                - generic [ref=f18e297]: Manage
+                - list "Manage" [ref=f18e298]:
+                  - listitem [ref=f18e299]:
+                    - link "Environment" [ref=f18e300] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/env
+                  - listitem [ref=f18e306]:
+                    - link "Shell" [ref=f18e307] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/shell
+                      - generic [ref=f18e312]:
+                        - generic [ref=f18e313]: Shell
+                        - status [ref=f18e316]
+                  - listitem [ref=f18e319]:
+                    - link "Scaling" [ref=f18e320] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/scaling
+                      - generic [ref=f18e326]:
+                        - generic [ref=f18e327]: Scaling
+                        - status [ref=f18e330]
+                  - listitem [ref=f18e333]:
+                    - link "Previews" [ref=f18e334] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/previews
+                  - listitem [ref=f18e340]:
+                    - link "Disk" [ref=f18e341] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/disks
+                      - generic [ref=f18e347]:
+                        - generic [ref=f18e348]: Disk
+                        - status [ref=f18e351]
+                  - listitem [ref=f18e354]:
+                    - link "One-Off Jobs" [ref=f18e355] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/jobs
+                      - generic [ref=f18e362]:
+                        - generic [ref=f18e363]: One-Off Jobs
+                        - status [ref=f18e366]
+          - generic [ref=f18e109]:
+            - alert [ref=f18e110]:
+              - generic [ref=f18e116]:
+                - generic [ref=f18e117]:
+                  - generic [ref=f18e118]: New plans, zero seat fees
+                  - generic [ref=f18e119]: We're updating workspace pricing to help teams grow faster. No seat fees, more self-serve features, granular bandwidth billing, and more.
+                - link "Opt-in early" [ref=f18e121] [cursor=pointer]:
+                  - /url: /billing/update-plan
+              - button "Close notification" [ref=f18e122] [cursor=pointer]
+            - generic [ref=f18e125]:
+              - button "Collapse items" [expanded] [ref=f18e126] [cursor=pointer]
+              - list "Footer navigation" [ref=f18e129]:
+                - listitem [ref=f18e130]:
+                  - link "Changelog" [ref=f18e131] [cursor=pointer]:
+                    - /url: https://render.com/changelog
+                - listitem [ref=f18e138]:
+                  - link "Invite a friend" [ref=f18e139] [cursor=pointer]:
+                    - /url: /invites
+                - listitem [ref=f18e143]:
+                  - button "Contact support" [ref=f18e144] [cursor=pointer]
+              - link "Render Status" [ref=f18e151] [cursor=pointer]:
+                - /url: https://status.render.com
+        - generic [ref=f18e369]:
+          - banner [ref=f18e371]:
+            - generic [ref=f18e372]:
+              - generic [ref=f18e373]: Web Service
+              - generic [ref=f18e377]:
+                - heading "atc-exam-api Python 3 Free Upgrade your instance Blueprint managed" [level=1] [ref=f18e379]:
+                  - generic [ref=f18e380]: atc-exam-api
+                  - generic [ref=f18e381]:
+                    - generic [ref=f18e382]: Python 3
+                    - link "Free" [ref=f18e383] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/plan
+                    - link [ref=f18e385] [cursor=pointer]:
+                      - /url: /web/srv-d9l1bg61egvs738i993g/plan
+                    - link "Blueprint managed" [ref=f18e391] [cursor=pointer]:
+                      - /url: /blueprint/exs-d9l1asrm8hqs7392a8g0
+                - generic [ref=f18e399]:
+                  - button "Connect" [ref=f18e400] [cursor=pointer]
+                  - button "Manual Deploy" [ref=f18e404] [cursor=pointer]
+            - generic [ref=f18e410]:
+              - generic [ref=f18e412]:
+                - generic [ref=f18e413]: "Service ID:"
+                - generic "Service ID:" [ref=f18e414]:
+                  - generic [ref=f18e415]: srv-d9l1bg61egvs738i993g
+                  - button "Copy" [ref=f18e418] [cursor=pointer]
+              - generic [ref=f18e423]:
+                - img "GitHub" [ref=f18e425]
+                - link "locdeptrai-cmd / -NG-D-NG-THI-N-NG-NH main" [ref=f18e427] [cursor=pointer]:
+                  - /url: https://github.com/locdeptrai-cmd/-NG-D-NG-THI-N-NG-NH/tree/main
+                  - generic [ref=f18e428]:
+                    - generic [ref=f18e429]: locdeptrai-cmd / -NG-D-NG-THI-N-NG-NH
+                    - generic [ref=f18e432]: main
+              - generic "Copy" [ref=f18e434]:
+                - link "https://atc-exam-api.onrender.com" [ref=f18e436] [cursor=pointer]:
+                  - /url: https://atc-exam-api.onrender.com
+                - button "Copy" [ref=f18e439] [cursor=pointer]
+          - main [ref=f18e443]:
+            - generic [ref=f18e505]:
+              - alert [ref=f18e506]:
+                - generic [ref=f18e514]:
+                  - generic [ref=f18e515]: Your free instance will spin down with inactivity, which can delay requests by 50 seconds or more.
+                  - link "Upgrade now" [ref=f18e518] [cursor=pointer]:
+                    - /url: /web/srv-d9l1bg61egvs738i993g/plan
+              - generic [ref=f18e521]:
+                - generic [ref=f18e522]:
+                  - generic [ref=f18e523]: July 29, 2026 at 10:01 PM
+                  - generic [ref=f18e524]: live
+                - generic [ref=f18e528]:
+                  - link "3d648df" [ref=f18e529] [cursor=pointer]:
+                    - /url: https://github.com/locdeptrai-cmd/-NG-D-NG-THI-N-NG-NH/commit/3d648dff49ed9da6be28a5e6d9e3456f5a95b2e6
+                  - generic [ref=f18e530]: "Merge pull request #2 from locdeptrai-cmd/agent/deploy-render-backend-db Deploy Django API and PostgreSQL on Render"
+              - generic [ref=f18e531]:
+                - generic [ref=f18e533]:
+                  - generic [ref=f18e535]:
+                    - button "All logs" [ref=f18e538] [cursor=pointer]
+                    - generic [ref=f18e544]:
+                      - generic [ref=f18e545]: Search
+                      - searchbox "Search" [ref=f18e551]
+                    - button "Live tail" [ref=f18e554] [cursor=pointer]
+                    - button [ref=f18e567] [cursor=pointer]:
+                      - img "Maximize" [ref=f18e568]
+                    - button [ref=f18e573] [cursor=pointer]:
+                      - img "Options" [ref=f18e574]
+                  - listbox [ref=f18e578]:
+                    - img "Loading..." [ref=f18e580]
+                - paragraph [ref=f18e584]:
+                  - text: Need better ways to work with logs? Try the
+                  - link "Render CLI" [ref=f18e585] [cursor=pointer]:
+                    - /url: https://render.com/docs/cli
+                  - text: ","
+                  - link "Render MCP Server" [ref=f18e589] [cursor=pointer]:
+                    - /url: https://render.com/docs/mcp-server
+                  - text: ", or set up a"
+                  - link "log stream integration" [ref=f18e590] [cursor=pointer]:
+                    - /url: https://render.com/docs/log-streams
+    - generic:
+      - generic:
+        - generic: "0 services selected:"
+        - generic:
+          - generic:
+            - button:
+              - generic: Move
+      - generic:
+        - separator
+        - generic:
+          - generic:
+            - button
+  - iframe [ref=f18e244]:
+    
