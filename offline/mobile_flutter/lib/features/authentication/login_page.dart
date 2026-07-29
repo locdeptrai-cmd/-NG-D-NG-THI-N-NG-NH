@@ -45,6 +45,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       formKey: _formKey,
                       username: _username,
                       password: _password,
+                      apiBaseUrl:
+                          ref.read(appControllerProvider.notifier).apiBaseUrl,
                       hidePassword: _hidePassword,
                       busy: state.busy,
                       error: state.error,
@@ -52,6 +54,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         setState(() => _hidePassword = !_hidePassword);
                       },
                       onSubmit: _submit,
+                      onConfigureServer: _configureServer,
                       onOffline: () => ref
                           .read(appControllerProvider.notifier)
                           .enableOfflineAccess(),
@@ -89,6 +92,70 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           _username.text.trim(),
           _password.text,
         );
+  }
+
+  Future<void> _configureServer() async {
+    final controller = TextEditingController(
+      text: ref.read(appControllerProvider.notifier).apiBaseUrl,
+    );
+    final formKey = GlobalKey<FormState>();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Địa chỉ máy chủ'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: TextInputType.url,
+                decoration: const InputDecoration(
+                  labelText: 'URL API',
+                  hintText: 'https://example.com/api',
+                  prefixIcon: Icon(Icons.dns_outlined),
+                ),
+                validator: (input) {
+                  final uri = Uri.tryParse(input?.trim() ?? '');
+                  if (uri == null ||
+                      !const {'http', 'https'}.contains(uri.scheme) ||
+                      uri.host.isEmpty) {
+                    return 'Nhập URL bắt đầu bằng http:// hoặc https://';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Khi mở ứng dụng bằng HTTPS, máy chủ API cũng phải dùng HTTPS.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(dialogContext, controller.text.trim());
+              }
+            },
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value == null || !mounted) return;
+    await ref.read(appControllerProvider.notifier).setBaseUrl(value);
+    if (mounted) setState(() {});
   }
 }
 
@@ -166,22 +233,26 @@ class _LoginForm extends StatelessWidget {
     required this.formKey,
     required this.username,
     required this.password,
+    required this.apiBaseUrl,
     required this.hidePassword,
     required this.busy,
     required this.error,
     required this.onTogglePassword,
     required this.onSubmit,
+    required this.onConfigureServer,
     required this.onOffline,
   });
 
   final GlobalKey<FormState> formKey;
   final TextEditingController username;
   final TextEditingController password;
+  final String apiBaseUrl;
   final bool hidePassword;
   final bool busy;
   final String? error;
   final VoidCallback onTogglePassword;
   final VoidCallback onSubmit;
+  final VoidCallback onConfigureServer;
   final VoidCallback onOffline;
 
   @override
@@ -196,6 +267,20 @@ class _LoginForm extends StatelessWidget {
           const Text(
             'Kết nối lần đầu để tải dữ liệu dùng ngoại tuyến.',
             style: TextStyle(color: Colors.white60),
+          ),
+          const SizedBox(height: 10),
+          TextButton.icon(
+            onPressed: busy ? null : onConfigureServer,
+            style: TextButton.styleFrom(
+              alignment: Alignment.centerLeft,
+              padding: EdgeInsets.zero,
+            ),
+            icon: const Icon(Icons.dns_outlined, size: 18),
+            label: Text(
+              'Máy chủ: $apiBaseUrl',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           const SizedBox(height: 26),
           TextFormField(

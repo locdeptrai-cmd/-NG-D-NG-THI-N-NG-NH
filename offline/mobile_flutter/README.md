@@ -23,6 +23,25 @@ flutter build web --release --dart-define=ATC_API_BASE_URL=https://example.com/a
 
 Không mở `build/web/index.html` bằng `file://`; hãy phục vụ qua HTTP/HTTPS.
 
+## GitHub Pages
+
+Workflow **Deploy ATC Exam PWA to GitHub Pages** build với base path:
+
+```text
+/-NG-D-NG-THI-N-NG-NH/
+```
+
+Địa chỉ xuất bản:
+
+```text
+https://locdeptrai-cmd.github.io/-NG-D-NG-THI-N-NG-NH/
+```
+
+Khai báo repository variable `ATC_API_BASE_URL` bằng URL API HTTPS trước khi
+deploy production. Nếu chưa có biến này, người dùng có thể chọn **Máy chủ** tại
+màn hình đăng nhập để nhập URL. Backend phải cho phép CORS origin
+`https://locdeptrai-cmd.github.io`.
+
 ## Chạy mobile
 
 Trên Windows:

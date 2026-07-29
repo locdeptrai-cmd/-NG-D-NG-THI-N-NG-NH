@@ -1,25 +1,63 @@
 {
-    "id": "/",
+    "id": "/-NG-D-NG-THI-N-NG-NH/",
     "name": "ATC Exam",
     "short_name": "ATC Exam",
-    "start_url": ".",
-    "scope": ".",
+    "start_url": "/-NG-D-NG-THI-N-NG-NH/",
+    "scope": "/-NG-D-NG-THI-N-NG-NH/",
     "display": "standalone",
-    "background_color": "#071B2D",
-    "theme_color": "#071B2D",
+    "background_color": "#052B69",
+    "theme_color": "#064E9B",
     "description": "Ứng dụng luyện tập và quản lý ngân hàng câu hỏi kiểm soát không lưu, hỗ trợ ngoại tuyến.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
         {
+            "src": "icons/Icon-72.png",
+            "sizes": "72x72",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "icons/Icon-96.png",
+            "sizes": "96x96",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "icons/Icon-128.png",
+            "sizes": "128x128",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "icons/Icon-144.png",
+            "sizes": "144x144",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "icons/Icon-152.png",
+            "sizes": "152x152",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "icons/Icon-180.png",
+            "sizes": "180x180",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
             "src": "icons/Icon-192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "icons/Icon-512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "icons/Icon-maskable-192.png",
