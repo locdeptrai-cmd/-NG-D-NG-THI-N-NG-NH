@@ -39,7 +39,11 @@ class QuestionRepository {
 
   Future<void> setBaseUrl(String value) => _api.setBaseUrl(value);
 
+  Future<void> resetToProductionBaseUrl() => _api.resetToProductionBaseUrl();
+
   String get baseUrl => _api.baseUrl;
+
+  String get productionBaseUrl => ApiClient.productionBaseUrl;
 
   Future<void> refreshCatalog() async {
     final results = await Future.wait([

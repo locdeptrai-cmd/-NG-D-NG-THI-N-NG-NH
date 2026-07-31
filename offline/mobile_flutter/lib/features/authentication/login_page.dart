@@ -124,9 +124,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _configureServer() async {
-    final controller = TextEditingController(
-      text: ref.read(appControllerProvider.notifier).apiBaseUrl,
-    );
+    final notifier = ref.read(appControllerProvider.notifier);
+    final controller = TextEditingController(text: notifier.apiBaseUrl);
     final formKey = GlobalKey<FormState>();
     final value = await showDialog<String>(
       context: context,
@@ -144,7 +143,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 keyboardType: TextInputType.url,
                 decoration: const InputDecoration(
                   labelText: 'URL API',
-                  hintText: 'https://example.com/api',
+                  hintText: 'https://atc-exam-api.onrender.com/api',
                   prefixIcon: Icon(Icons.dns_outlined),
                 ),
                 validator: (input) {
@@ -158,6 +157,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 },
               ),
               const SizedBox(height: 12),
+              Text(
+                'Mặc định: ${notifier.productionBaseUrl}',
+                style: const TextStyle(fontSize: 12, color: Colors.white70),
+              ),
+              const SizedBox(height: 4),
               const Text(
                 'Khi mở ứng dụng bằng HTTPS, máy chủ API cũng phải dùng HTTPS.',
                 style: TextStyle(fontSize: 12),
@@ -169,6 +173,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, notifier.productionBaseUrl),
+            child: const Text('Dùng Render'),
           ),
           FilledButton(
             onPressed: () {

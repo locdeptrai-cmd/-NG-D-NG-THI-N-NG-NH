@@ -67,13 +67,10 @@ jobs:
         working-directory: offline/mobile_flutter
         shell: bash
         run: |
-          build_args=(--release --base-href "$PWA_BASE_PATH")
-          if [[ -n "$ATC_API_BASE_URL" ]]; then
-            build_args+=(--dart-define="ATC_API_BASE_URL=$ATC_API_BASE_URL")
-          else
-            echo "::warning::ATC_API_BASE_URL is not configured; users can set the HTTPS API URL from the login screen."
-          fi
-          flutter build web "${build_args[@]}"
+          api_base_url="${ATC_API_BASE_URL:-https://atc-exam-api.onrender.com/api}"
+          echo "Building PWA with ATC_API_BASE_URL=$api_base_url"
+          flutter build web --release --base-href "$PWA_BASE_PATH" \
+            --dart-define="ATC_API_BASE_URL=$api_base_url"
           touch build/web/.nojekyll
 
       - name: Configure GitHub Pages

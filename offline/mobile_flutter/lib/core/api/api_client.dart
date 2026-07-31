@@ -6,9 +6,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/models/exam_models.dart';
 
 class ApiClient {
+  /// Production ATC Exam API (Render).
+  static const productionBaseUrl = 'https://atc-exam-api.onrender.com/api';
+
   static const _compiledBaseUrl = String.fromEnvironment(
     'ATC_API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8000/api',
+    defaultValue: productionBaseUrl,
   );
 
   ApiClient({
@@ -17,7 +20,7 @@ class ApiClient {
   })  : _dio = dio ?? Dio(),
         _secureStorage = secureStorage ?? const FlutterSecureStorage() {
     _dio.options
-      ..baseUrl = _compiledBaseUrl
+      ..baseUrl = _effectiveDefaultBaseUrl()
       // Render free tier cold-start can exceed 8s; keep catalog refresh usable.
       ..connectTimeout = const Duration(seconds: 45)
       ..receiveTimeout = const Duration(seconds: 90);
@@ -32,6 +35,16 @@ class ApiClient {
 
   String get baseUrl => _dio.options.baseUrl;
 
+  static String _effectiveDefaultBaseUrl() {
+    final compiled = _normalizeStatic(_compiledBaseUrl);
+    if (kIsWeb &&
+        !_isLoopbackHost(Uri.base.host) &&
+        _isLoopbackHost(Uri.parse(compiled).host)) {
+      return productionBaseUrl;
+    }
+    return compiled;
+  }
+
   Future<void> initialize() async {
     final preferences = await SharedPreferences.getInstance();
     final savedUrl = preferences.getString(_baseUrlKey);
@@ -42,15 +55,27 @@ class ApiClient {
           _dio.options.baseUrl = normalized;
         } else {
           await preferences.remove(_baseUrlKey);
+          _dio.options.baseUrl = _effectiveDefaultBaseUrl();
         }
       } on FormatException {
         await preferences.remove(_baseUrlKey);
+        _dio.options.baseUrl = _effectiveDefaultBaseUrl();
       }
+    } else {
+      _dio.options.baseUrl = _effectiveDefaultBaseUrl();
+    }
+
+    // Public HTTPS PWA must never stay on a loopback API target.
+    if (kIsWeb &&
+        !_isLoopbackHost(Uri.base.host) &&
+        _isLoopbackHost(Uri.parse(_dio.options.baseUrl).host)) {
+      _dio.options.baseUrl = productionBaseUrl;
+      await preferences.remove(_baseUrlKey);
     }
   }
 
   Future<bool> recoverDefaultBaseUrl() async {
-    final fallback = _normalizeBaseUrl(_compiledBaseUrl);
+    final fallback = _effectiveDefaultBaseUrl();
     if (_dio.options.baseUrl == fallback) return false;
 
     final previous = _dio.options.baseUrl;
@@ -65,6 +90,10 @@ class ApiClient {
     return false;
   }
 
+  Future<void> resetToProductionBaseUrl() async {
+    await setBaseUrl(productionBaseUrl);
+  }
+
   Future<void> setBaseUrl(String value) async {
     final normalized = _normalizeBaseUrl(value);
     _dio.options.baseUrl = normalized;
@@ -72,7 +101,9 @@ class ApiClient {
     await preferences.setString(_baseUrlKey, normalized);
   }
 
-  String _normalizeBaseUrl(String value) {
+  String _normalizeBaseUrl(String value) => _normalizeStatic(value);
+
+  static String _normalizeStatic(String value) {
     var normalized = value.trim();
     while (normalized.endsWith('/')) {
       normalized = normalized.substring(0, normalized.length - 1);

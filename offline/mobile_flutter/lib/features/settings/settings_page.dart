@@ -48,29 +48,56 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 keyboardType: TextInputType.url,
                 decoration: const InputDecoration(
                   labelText: 'Địa chỉ API',
-                  hintText: 'https://example.com/api',
+                  hintText: 'https://atc-exam-api.onrender.com/api',
                   prefixIcon: Icon(Icons.dns_outlined),
                 ),
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Mặc định: ${ref.read(appControllerProvider.notifier).productionBaseUrl}',
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
               const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    await ref
-                        .read(appControllerProvider.notifier)
-                        .setBaseUrl(apiUrl.text);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content:
-                                Text('Đã lưu và kiểm tra địa chỉ máy chủ.')),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.save_outlined),
-                  label: const Text('Lưu địa chỉ'),
-                ),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      await ref
+                          .read(appControllerProvider.notifier)
+                          .setBaseUrl(apiUrl.text);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đã lưu và kiểm tra địa chỉ máy chủ.'),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.save_outlined),
+                    label: const Text('Lưu địa chỉ'),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: () async {
+                      final notifier =
+                          ref.read(appControllerProvider.notifier);
+                      await notifier.resetToProductionBaseUrl();
+                      apiUrl.text = notifier.apiBaseUrl;
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Đã khôi phục máy chủ Render mặc định.',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.cloud_done_outlined),
+                    label: const Text('Dùng Render mặc định'),
+                  ),
+                ],
               ),
               const SizedBox(height: 30),
               Text('Cài PWA', style: Theme.of(context).textTheme.titleLarge),

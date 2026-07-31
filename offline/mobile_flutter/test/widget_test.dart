@@ -80,4 +80,11 @@ void main() {
       isTrue,
     );
   });
+
+  test('production default API points to Render', () {
+    expect(
+      ApiClient.productionBaseUrl,
+      'https://atc-exam-api.onrender.com/api',
+    );
+  });
 }

@@ -88,6 +88,8 @@ class AppController extends StateNotifier<AppState> {
 
   String get apiBaseUrl => _repository.baseUrl;
 
+  String get productionBaseUrl => _repository.productionBaseUrl;
+
   Future<void> initialize() async {
     await _repository.initialize();
     await _loadLocal();
@@ -246,6 +248,20 @@ class AppController extends StateNotifier<AppState> {
       state = state.copyWith(
         busy: false,
         error: 'Không lưu được địa chỉ máy chủ.',
+      );
+    }
+  }
+
+  Future<void> resetToProductionBaseUrl() async {
+    state = state.copyWith(busy: true, clearError: true);
+    try {
+      await _repository.resetToProductionBaseUrl();
+      final online = await _repository.isOnline();
+      state = state.copyWith(busy: false, online: online);
+    } catch (_) {
+      state = state.copyWith(
+        busy: false,
+        error: 'Không khôi phục được máy chủ mặc định.',
       );
     }
   }
