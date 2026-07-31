@@ -95,7 +95,7 @@ File `render.yaml` tao dong bo:
 - Django API tai `https://atc-exam-api.onrender.com`.
 - PostgreSQL tai region Singapore, chi cho phep ket noi noi bo.
 - Secret key ngau nhien, HTTPS, CORS cho GitHub Pages.
-- Import mot lan du lieu tu `dev.sqlite3` sang PostgreSQL sau deploy dau tien.
+- Import du lieu tu `dev.sqlite3` sang PostgreSQL (lan dau day du; cac lan sau sync ngan hang cau hoi theo nhom lech, gom ACC HAN).
 
 Tren Render Dashboard, chon **New Blueprint Instance**, ket noi repository nay
 va ap dung `render.yaml`. Sau khi API hoat dong, dat GitHub Actions variable:

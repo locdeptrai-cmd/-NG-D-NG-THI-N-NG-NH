@@ -1,6 +1,9 @@
+import sqlite3
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
@@ -12,7 +15,17 @@ from .importers import (
     _target_subject_codes,
     classify_question_category,
 )
-from .models import SUBJECT_GROUPS, Attempt, Category, Exam, ExamQuestion, Question, Subject, User
+from .models import (
+    SUBJECT_GROUPS,
+    Answer,
+    Attempt,
+    Category,
+    Exam,
+    ExamQuestion,
+    Question,
+    Subject,
+    User,
+)
 
 
 class XlsxImportTests(TestCase):
@@ -278,3 +291,62 @@ class ExamAccessTests(TestCase):
         response = self.client.get(reverse("exam_result", args=[self.attempt.id]))
 
         self.assertEqual(response.status_code, 403)
+
+
+class SyncExamBankFromSqliteTests(TestCase):
+    def test_syncs_missing_acc_han_subject_questions(self):
+        Subject.objects.create(code="ACC HAN", name="ACC HAN")
+
+        with tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False) as tmp:
+            source = Path(tmp.name)
+
+        try:
+            conn = sqlite3.connect(source)
+            conn.executescript(
+                """
+                CREATE TABLE exam_bank_subject (
+                    id INTEGER PRIMARY KEY, code TEXT, name TEXT
+                );
+                CREATE TABLE exam_bank_document (
+                    id INTEGER PRIMARY KEY, code TEXT, title TEXT,
+                    description TEXT, url TEXT
+                );
+                CREATE TABLE exam_bank_category (
+                    id INTEGER PRIMARY KEY, name TEXT, subject_id INTEGER
+                );
+                CREATE TABLE exam_bank_question (
+                    id INTEGER PRIMARY KEY, code TEXT, content TEXT,
+                    explanation TEXT, question_type TEXT, subject_id INTEGER,
+                    category_id INTEGER, difficulty TEXT, topic TEXT,
+                    position_scope TEXT, status TEXT,
+                    is_locked_for_official_exam INTEGER,
+                    reference_document_id INTEGER
+                );
+                CREATE TABLE exam_bank_answer (
+                    id INTEGER PRIMARY KEY, question_id INTEGER, label TEXT,
+                    content TEXT, is_correct INTEGER, "order" INTEGER
+                );
+                INSERT INTO exam_bank_subject VALUES (1, 'ACC HAN', 'ACC HAN');
+                INSERT INTO exam_bank_category VALUES (1, 'General', 1);
+                INSERT INTO exam_bank_question VALUES (
+                    1, 'ACC HAN-TEST-1', 'Which authority?', '', 'single', 1, 1,
+                    '', '', '', 'approved', 0, NULL
+                );
+                INSERT INTO exam_bank_answer VALUES
+                    (1, 1, 'A', 'Prime minister', 1, 1),
+                    (2, 1, 'B', 'MOT', 0, 2);
+                """
+            )
+            conn.close()
+
+            call_command("sync_exam_bank_from_sqlite", source=str(source))
+
+            question = Question.objects.get(code="ACC HAN-TEST-1")
+            self.assertEqual(question.subject.code, "ACC HAN")
+            self.assertEqual(question.status, Question.STATUS_APPROVED)
+            self.assertEqual(question.answers.count(), 2)
+            self.assertTrue(
+                Answer.objects.filter(question=question, label="A", is_correct=True).exists()
+            )
+        finally:
+            source.unlink(missing_ok=True)
