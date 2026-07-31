@@ -18,8 +18,9 @@ class ApiClient {
         _secureStorage = secureStorage ?? const FlutterSecureStorage() {
     _dio.options
       ..baseUrl = _compiledBaseUrl
-      ..connectTimeout = const Duration(seconds: 8)
-      ..receiveTimeout = const Duration(seconds: 30);
+      // Render free tier cold-start can exceed 8s; keep catalog refresh usable.
+      ..connectTimeout = const Duration(seconds: 45)
+      ..receiveTimeout = const Duration(seconds: 90);
   }
 
   static const _accessKey = 'atc_access_token';
@@ -182,8 +183,9 @@ class ApiClient {
   }
 
   Future<QuestionPackageBundle> downloadPackage(String packageId) async {
+    final encodedId = Uri.encodeComponent(packageId);
     final response = await _authorized<Map<String, dynamic>>(
-      () => _dio.get('/question-packages/$packageId/download/'),
+      () => _dio.get('/question-packages/$encodedId/download/'),
     );
     return QuestionPackageBundle.fromJson(response.data!);
   }

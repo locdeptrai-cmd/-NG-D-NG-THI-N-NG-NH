@@ -149,6 +149,15 @@ class AppDatabase extends _$AppDatabase {
   ) async {
     await transaction(() async {
       for (final subject in subjects) {
+        // Drop stale rows that share the same code but a different server id
+        // so UNIQUE(code) cannot abort the whole catalog refresh.
+        await (delete(localSubjects)
+              ..where(
+                (row) =>
+                    row.code.equals(subject.code) &
+                    row.serverId.isNotValue(subject.id),
+              ))
+            .go();
         await into(localSubjects).insertOnConflictUpdate(
           LocalSubjectsCompanion.insert(
             serverId: Value(subject.id),
@@ -158,15 +167,58 @@ class AppDatabase extends _$AppDatabase {
           ),
         );
       }
+
+      final incomingIds = packages.map((item) => item.packageId).toSet();
       for (final item in packages) {
+        final legacyId = _legacySpacedPackageId(item);
         final old = await (select(localPackages)
               ..where((row) => row.packageId.equals(item.packageId)))
             .getSingleOrNull();
+        LocalPackage? legacy;
+        if (legacyId != null && legacyId != item.packageId) {
+          legacy = await (select(localPackages)
+                ..where((row) => row.packageId.equals(legacyId)))
+              .getSingleOrNull();
+        }
+
+        final downloadedAt = old?.downloadedAt ?? legacy?.downloadedAt;
         await into(localPackages).insertOnConflictUpdate(
-          _packageCompanion(item, downloadedAt: old?.downloadedAt),
+          _packageCompanion(item, downloadedAt: downloadedAt),
         );
+
+        // Migrate questions downloaded under the old spaced package id.
+        if (legacy != null && legacy.packageId != item.packageId) {
+          await customStatement(
+            'UPDATE local_questions SET package_id = ? WHERE package_id = ?',
+            [item.packageId, legacy.packageId],
+          );
+          await (delete(localPackages)
+                ..where((row) => row.packageId.equals(legacy!.packageId)))
+              .go();
+        }
+      }
+
+      // Remove catalog rows for packages the server no longer advertises,
+      // but keep rows that still have downloaded question data.
+      final existing = await select(localPackages).get();
+      for (final row in existing) {
+        if (incomingIds.contains(row.packageId)) continue;
+        if (row.downloadedAt != null) continue;
+        await (delete(localPackages)
+              ..where((tbl) => tbl.packageId.equals(row.packageId)))
+            .go();
       }
     });
+  }
+
+  /// Old servers used package ids like `ACC HAN-2026-PRACTICE` (with spaces).
+  String? _legacySpacedPackageId(QuestionPackageSummary item) {
+    final slug = item.subject.code.replaceAll(' ', '_');
+    final prefix = '$slug-';
+    if (!item.packageId.startsWith(prefix)) return null;
+    final suffix = item.packageId.substring(prefix.length);
+    final legacy = '${item.subject.code}-$suffix';
+    return legacy == item.packageId ? null : legacy;
   }
 
   LocalPackagesCompanion _packageCompanion(

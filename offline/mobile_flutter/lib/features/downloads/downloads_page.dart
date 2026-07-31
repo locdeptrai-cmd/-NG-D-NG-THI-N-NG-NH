@@ -22,7 +22,18 @@ class DownloadsPage extends ConsumerWidget {
           'Tải từng gói vào IndexedDB. Phiên bản chỉ được thay sau khi ghi dữ liệu thành công.',
           style: TextStyle(color: Colors.white60),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.tonalIcon(
+            onPressed: (!state.online || !state.authenticated || state.busy)
+                ? null
+                : () => ref.read(appControllerProvider.notifier).refresh(),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Làm mới danh mục từ máy chủ'),
+          ),
+        ),
+        const SizedBox(height: 20),
         if (state.packages.isEmpty)
           _EmptyCatalog(online: state.online)
         else
