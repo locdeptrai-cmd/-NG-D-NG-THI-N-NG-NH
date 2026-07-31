@@ -17,14 +17,14 @@ EXCEL_DB_MAP = [
     ("Loại kiến thức (Chuyên môn/nghiệp vụ)", "category"),
     ("TT", "question_order"),
     ("QUESTION", "question.content"),
-    ("A", "answer A"),
-    ("B", "answer B"),
-    ("C", "answer C"),
-    ("D", "answer D"),
-    ("ANS", "correct answer"),
+    ("A / 1", "answer A"),
+    ("B / 2", "answer B"),
+    ("C / 3", "answer C"),
+    ("D / 4", "answer D"),
+    ("ANS", "correct answer (A-D or 1-4)"),
     (
         "rating / RATING",
-        "subject group(s) APS/ADC/SUP (optional; multi allowed e.g. SUP,APS — SUP may overlap ADC/APS)",
+        "subject group(s) APS/ADC/ACC HAN/SUP (optional; multi allowed e.g. SUP,APS — SUP may overlap ADC/APS)",
     ),
 ]
 
@@ -120,28 +120,60 @@ def _source_tokens(path: Path):
     return set(_source_prefix(path).split("-"))
 
 
+def _canonical_rating_token(token):
+    """Map a rating token/alias to a SUBJECT_GROUPS code."""
+    token = re.sub(r"[\s_\-]+", " ", _normalize(token).upper()).strip()
+    if not token:
+        return ""
+    if token in SUBJECT_GROUPS:
+        return token
+
+    aliases = {
+        "ACC": "ACC HAN",
+        "ACCHAN": "ACC HAN",
+        "ACC HAN": "ACC HAN",
+        "ACC HN": "ACC HAN",
+        "ACCHN": "ACC HAN",
+    }
+    if token in aliases and aliases[token] in SUBJECT_GROUPS:
+        return aliases[token]
+
+    compact = token.replace(" ", "")
+    for code in SUBJECT_GROUPS:
+        if code.replace(" ", "") == compact:
+            return code
+    if compact in aliases and aliases[compact] in SUBJECT_GROUPS:
+        return aliases[compact]
+    return ""
+
+
 def _parse_rating_values(value):
-    """Parse one or many ratings from a cell (APS, ADC, SUP).
+    """Parse one or many ratings from a cell (APS, ADC, ACC HAN, SUP).
 
     SUP questions may also belong to APS and/or ADC, so values like
     ``SUP,APS``, ``ADC/SUP``, or ``APS ADC SUP`` are supported.
+    ``ACC HAN`` (aliases: ACC, ACC_HAN, ACCHAN) is a dedicated bank.
     """
     text = _normalize(value).upper()
     if not text:
         return []
 
     found = []
-    tokens = re.split(r"[\s,;/|]+", text)
-    for token in tokens:
-        token = token.strip()
-        if token in SUBJECT_GROUPS and token not in found:
-            found.append(token)
-
-    # Fallback: whole cell is a single known code with no separators.
-    if not found:
-        compact = text.replace(" ", "")
-        if compact in SUBJECT_GROUPS:
-            found.append(compact)
+    # Prefer comma/slash separators so "ACC HAN" stays intact as one chunk.
+    chunks = re.split(r"[,;/|]+", text)
+    for chunk in chunks:
+        chunk = re.sub(r"[\s_\-]+", " ", chunk).strip()
+        if not chunk:
+            continue
+        code = _canonical_rating_token(chunk)
+        if code:
+            if code not in found:
+                found.append(code)
+            continue
+        for token in chunk.split():
+            code = _canonical_rating_token(token)
+            if code and code not in found:
+                found.append(code)
     return found
 
 
@@ -165,9 +197,9 @@ def _resolve_subject_targets(path: Path, subject_codes, rating_explicit: bool):
     """Route each question to subject DB(s).
 
     Priority:
-    1) Explicit rating cell(s) in file (APS/ADC/SUP; multi allowed, SUP may overlap)
+    1) Explicit rating cell(s) in file (APS/ADC/ACC HAN/SUP; multi allowed, SUP may overlap)
     2) Form/default group chosen at import time
-    3) Legacy filename heuristics (only when form group is APS/ADC, not SUP)
+    3) Legacy filename heuristics (only when form group is APS/ADC, not ACC HAN/SUP)
     """
     if isinstance(subject_codes, str):
         codes = [subject_codes] if subject_codes in SUBJECT_GROUPS else []
@@ -182,11 +214,13 @@ def _resolve_subject_targets(path: Path, subject_codes, rating_explicit: bool):
     if not codes:
         codes = ["APS"]
 
-    # Choosing SUP on the form must not be overridden by LTC/GCU filenames.
-    if "SUP" in codes:
+    # Dedicated banks must not be overridden by LTC/GCU filename heuristics.
+    if "SUP" in codes or "ACC HAN" in codes:
         return sorted(dict.fromkeys(codes), key=lambda c: order.get(c, 99))
 
     tokens = _source_tokens(path)
+    if ("ACC" in tokens and "HAN" in tokens) or "ACCHAN" in tokens or "ACC" in tokens:
+        return ["ACC HAN"]
     if "LTC" in tokens and set(codes) <= {"APS", "ADC"}:
         return ["ADC", "APS"]
     if "GCU" in tokens and set(codes) <= {"APS", "ADC"}:
@@ -254,16 +288,17 @@ def _extract_from_table_rows(rows, default_subject_code):
     )
     c_tt = col("TT", "STT")
     c_question = col("QUESTION", "QUESTIONS", "CAU HOI", "CÂU HỎI")
-    c_a = col("A")
-    c_b = col("B")
-    c_c = col("C")
-    c_d = col("D")
+    # Answer option headers may be A/B/C/D or numeric 1/2/3/4.
+    c_a = col("A", "1")
+    c_b = col("B", "2")
+    c_c = col("C", "3")
+    c_d = col("D", "4")
     c_ans = col("ANS", "ANSWER", "DAP AN", "ĐÁP ÁN")
-    # Optional column: rating / RATING (APS, ADC, SUP).
+    # Optional column: rating / RATING (APS, ADC, ACC HAN, SUP).
     c_rating = col("RATING", "rating", "NHOM", "NHÓM", "SUBJECT")
 
     if c_question is None or c_ans is None or c_a is None or c_b is None:
-        raise ImportError("Thieu cot bat buoc: QUESTION(S)/ANS/A/B.")
+        raise ImportError("Thieu cot bat buoc: QUESTION(S)/ANS va A/B (hoac 1/2).")
 
     extracted = []
     current_topic = ""
@@ -394,10 +429,10 @@ def _read_csv_records(path: Path, default_subject_code: str):
                 "tt": code or str(i),
                 "topic": _classify_category(topic_raw, question),
                 "question": question,
-                "A": _normalize(_csv_field(row, "A")),
-                "B": _normalize(_csv_field(row, "B")),
-                "C": _normalize(_csv_field(row, "C")),
-                "D": _normalize(_csv_field(row, "D")),
+                "A": _normalize(_csv_field(row, "A", "1")),
+                "B": _normalize(_csv_field(row, "B", "2")),
+                "C": _normalize(_csv_field(row, "C", "3")),
+                "D": _normalize(_csv_field(row, "D", "4")),
                 "ans": ans_labels,
                 "subject_code": subject_codes[0],
                 "subject_codes": subject_codes,

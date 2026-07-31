@@ -36,7 +36,7 @@ Format cot:
 - Chu de / Chủ đề
 - Muc do / Mức độ
 - Tai lieu tham chieu / Tài liệu tham chiếu
-- rating / RATING (khong bat buoc; APS/ADC/SUP; SUP co the trung APS/ADC, VD: SUP,APS)
+- rating / RATING (khong bat buoc; APS/ADC/ACC HAN/SUP; alias ACC->ACC HAN; SUP co the trung APS/ADC)
 
 Lenh:
 ```bash

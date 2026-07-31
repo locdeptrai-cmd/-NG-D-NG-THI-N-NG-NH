@@ -86,7 +86,7 @@ Dashboard da ho tro format cac file:
 ### 4.1. Form import tren `/management/`
 1. Dang nhap `endteacher`
 2. Muc `Form import theo mau file de thi`
-3. Chon `Nhom mac dinh` (APS/ADC/SUP)
+3. Chon `Nhom mac dinh` (APS/ADC/ACC HAN/SUP)
 4. Chon file `.xlsx/.xlsm/.csv`
 5. Bam `Import ngay`
 
@@ -97,13 +97,14 @@ Dashboard da ho tro format cac file:
 - `A/B/C/D` -> dap an
 - `ANS` -> dap an dung
   - Ho tro `1/2/3/4` va `A/B/C/D`
-- `rating` / `RATING` -> nhom `APS/ADC/SUP` (khong bat buoc; co the nhieu nhom)
+- `rating` / `RATING` -> nhom `APS/ADC/ACC HAN/SUP` (khong bat buoc; co the nhieu nhom)
 
 Luu y:
 - Cot `rating` khong bat buoc.
-- Neu dong co `rating` hop le (APS/ADC/SUP), sau khi phan loai kien thuc he thong tu do cau hoi vao DB dung nhom do.
+- Neu dong co `rating` hop le (APS/ADC/ACC HAN/SUP), sau khi phan loai kien thuc he thong tu do cau hoi vao DB dung nhom do.
 - SUP co the trung voi APS/ADC: ghi nhieu gia tri trong 1 o, VD `SUP,APS`, `ADC/SUP`, `APS ADC SUP`.
   He thong tao ban ghi rieng cho tung nhom (cung noi dung cau hoi/dap an).
+- Nhom `ACC HAN` dung cho bo cau hoi Area/Approach Control (rating=`ACC HAN`; alias `ACC`/`ACC_HAN`).
 - Neu `rating` thieu/sai, he thong fallback theo nhom ban chon tren form (hoac suy ra tu ten file).
 - Sau import, cau hoi vao `draft`.
 
@@ -113,7 +114,7 @@ Luu y:
 
 ### 5.1. Duyet nhanh theo nhom (moi them)
 Tren `/management/`, muc `Duyet nhanh cau hoi thi thu`:
-1. Chon nhom `APS`, `ADC` hoac `SUP`
+1. Chon nhom `APS`, `ADC`, `ACC HAN` hoac `SUP`
 2. Bam `Duyet nhanh theo nhom`
 3. He thong chuyen cau `draft/review` (co dap an) -> `approved`
 
@@ -126,7 +127,7 @@ Tren `/management/`, muc `Duyet nhanh cau hoi thi thu`:
 
 ## 6. Co che thi thu hien tai (da hoat dong)
 
-Khi `enduser` vao `/start/` va chon APS/ADC/SUP:
+Khi `enduser` vao `/start/` va chon APS/ADC/ACC HAN/SUP:
 - He thong tu dong rut **ngau nhien 50 cau**
 - Dieu kien cau hoi:
   - `status=approved`
@@ -151,7 +152,7 @@ Neu bao loi chua du 50 cau:
    - Danh dau `is_correct`
 
 Metadata nen quan ly chuan:
-- `subject` (APS/ADC/SUP)
+- `subject` (APS/ADC/ACC HAN/SUP)
 - `category`
 - `topic`
 - `difficulty`

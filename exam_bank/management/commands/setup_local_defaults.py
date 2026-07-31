@@ -20,6 +20,13 @@ class Command(BaseCommand):
             defaults={"name": "End Teacher", "description": "Giao vien quan tri ngan hang cau hoi"},
         )
 
+        # Rename legacy ACC -> ACC HAN if present.
+        legacy_acc = Subject.objects.filter(code="ACC").first()
+        if legacy_acc and not Subject.objects.filter(code="ACC HAN").exists():
+            legacy_acc.code = "ACC HAN"
+            legacy_acc.name = "ACC HAN"
+            legacy_acc.save(update_fields=["code", "name"])
+
         for code in SUBJECT_GROUPS:
             Subject.objects.get_or_create(code=code, defaults={"name": code})
 

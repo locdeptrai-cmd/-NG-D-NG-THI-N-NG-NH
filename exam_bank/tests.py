@@ -181,6 +181,60 @@ class XlsxImportTests(TestCase):
         self.assertEqual(records[0]["subject_codes"], ["SUP"])
         self.assertTrue(records[0]["rating_explicit"])
 
+    def test_xlsx_numeric_option_headers_one_to_four(self):
+        class Worksheet:
+            max_row = 2
+
+            def iter_rows(self, **kwargs):
+                return iter(
+                    [
+                        ("QUESTION", "1", "2", "3", "4", "ANS", "Rating"),
+                        ("Which authority?", "Prime minister", "MOT", "MOD", "MOFA", "1", "ACC HAN"),
+                    ]
+                )
+
+        class Workbook:
+            active = Worksheet()
+
+            def close(self):
+                pass
+
+        with patch("openpyxl.load_workbook", return_value=Workbook()):
+            records = _read_xlsx_records(Path("ACC HN.xlsx"), "APS")
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["A"], "Prime minister")
+        self.assertEqual(records[0]["ans"], "A")
+        self.assertEqual(records[0]["subject_codes"], ["ACC HAN"])
+
+    def test_rating_acc_han_maps_to_acc_han_subject_group(self):
+        import tempfile
+
+        content = (
+            "Loại Kiến Thức,TT,QUESTIONS,A,B,C,D,ANS,rating\n"
+            ",1,What is area control?,One,Two,Three,Four,2,ACC HAN\n"
+            ",2,Alias ACC still maps?,One,Two,Three,Four,1,ACC\n"
+        )
+        with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, encoding="utf-8") as tmp:
+            tmp.write(content)
+            path = Path(tmp.name)
+
+        try:
+            records = _read_csv_records(path, "APS")
+        finally:
+            path.unlink(missing_ok=True)
+
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[0]["ans"], "B")
+        self.assertEqual(records[0]["subject_codes"], ["ACC HAN"])
+        self.assertEqual(records[1]["subject_codes"], ["ACC HAN"])
+        self.assertTrue(records[0]["rating_explicit"])
+        self.assertIn("ACC HAN", SUBJECT_GROUPS)
+        self.assertEqual(
+            _resolve_subject_targets(Path("ltc-acc.xlsx"), records[0]["subject_codes"], True),
+            ["ACC HAN"],
+        )
+
     def test_classify_question_category_uses_aliases(self):
         self.assertEqual(classify_question_category("METEOLOGY", "What is CAVOK?"), "Meteorology")
         self.assertEqual(classify_question_category("", "MAYDAY distress call"), "Emergency and SAR")
