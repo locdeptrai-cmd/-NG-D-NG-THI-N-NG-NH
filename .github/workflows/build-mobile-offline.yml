@@ -36,7 +36,8 @@ jobs:
             cp ../data/offline_exam.db assets/offline_exam.db
           fi
           flutter pub get
-          flutter build apk --release
+          flutter build apk --release \
+            --dart-define=ATC_API_BASE_URL=https://atc-exam-api.onrender.com/api
           mkdir -p ../dist
           cp build/app/outputs/flutter-apk/app-release.apk ../dist/ATC_Offline_Mobile_Android.apk
 
@@ -82,7 +83,8 @@ jobs:
         if: steps.signing.outputs.enabled != 'true'
         working-directory: offline/mobile_flutter
         run: |
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign \
+            --dart-define=ATC_API_BASE_URL=https://atc-exam-api.onrender.com/api
           mkdir -p ../dist
           ditto -c -k --sequesterRsrc --keepParent \
             build/ios/iphoneos/Runner.app \

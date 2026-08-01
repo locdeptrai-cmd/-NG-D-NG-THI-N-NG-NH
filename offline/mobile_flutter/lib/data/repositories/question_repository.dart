@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/database/app_database.dart';
+import '../../core/database/offline_db_seeder.dart';
 import '../models/exam_models.dart';
 
 class QuestionRepository {
@@ -11,13 +12,18 @@ class QuestionRepository {
     required AppDatabase database,
     required ApiClient api,
   })  : _database = database,
-        _api = api;
+        _api = api,
+        _seeder = OfflineDbSeeder(database);
 
   final AppDatabase _database;
   final ApiClient _api;
+  final OfflineDbSeeder _seeder;
   final Uuid _uuid = const Uuid();
 
-  Future<void> initialize() => _api.initialize();
+  Future<void> initialize() async {
+    await _api.initialize();
+    await _seeder.seedIfNeeded();
+  }
 
   Future<bool> isOnline() => _api.isOnline();
 
