@@ -22,10 +22,18 @@ class _PracticePageState extends ConsumerState<PracticePage> {
     final state = ref.watch(appControllerProvider);
     final downloaded =
         state.packages.where((item) => item.isDownloaded).toList();
-    selectedPackageId ??= downloaded.firstOrNull?.packageId;
+
+    // Keep selection valid when package ids change (e.g. ACC HAN -> ACC_HAN).
+    if (downloaded.isNotEmpty &&
+        (selectedPackageId == null ||
+            !downloaded.any((item) => item.packageId == selectedPackageId))) {
+      selectedPackageId = downloaded.first.packageId;
+    }
+
     final selected = downloaded
         .where((item) => item.packageId == selectedPackageId)
         .firstOrNull;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(22, 20, 22, 40),
       children: [
@@ -48,19 +56,21 @@ class _PracticePageState extends ConsumerState<PracticePage> {
                 Text('Nhóm năng định',
                     style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 12),
-                SegmentedButton<String>(
-                  segments: [
+                // Choice chips wrap cleanly for labels like "ACC HAN"
+                // (SegmentedButton clips long/4-way groups on narrow screens).
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
                     for (final item in downloaded)
-                      ButtonSegment(
-                        value: item.packageId,
+                      ChoiceChip(
                         label: Text(item.subject.code),
-                        icon: const Icon(Icons.radar_rounded),
+                        selected: item.packageId == selectedPackageId,
+                        onSelected: (_) {
+                          setState(() => selectedPackageId = item.packageId);
+                        },
                       ),
                   ],
-                  selected: {selectedPackageId!},
-                  onSelectionChanged: (value) {
-                    setState(() => selectedPackageId = value.first);
-                  },
                 ),
                 const SizedBox(height: 26),
                 Text('Số câu', style: Theme.of(context).textTheme.titleLarge),
@@ -75,13 +85,15 @@ class _PracticePageState extends ConsumerState<PracticePage> {
                       setState(() => count = value.first),
                 ),
                 const SizedBox(height: 28),
-                _ReadinessLine(package: selected!),
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  onPressed: () => _start(selected),
-                  icon: const Icon(Icons.play_arrow_rounded),
-                  label: const Text('Bắt đầu làm bài'),
-                ),
+                if (selected != null) ...[
+                  _ReadinessLine(package: selected),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: () => _start(selected),
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: const Text('Bắt đầu làm bài'),
+                  ),
+                ],
               ],
             ),
           ),
