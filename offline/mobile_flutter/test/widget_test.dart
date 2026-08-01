@@ -87,4 +87,15 @@ void main() {
       'https://atc-exam-api.onrender.com/api',
     );
   });
+
+  test('hosted PWA rejects a saved LAN IP API URL', () {
+    expect(
+      ApiClient.isSavedBaseUrlUsable(
+        value: 'http://192.168.1.10:8000/api',
+        pageUri: Uri.parse('https://locdeptrai-cmd.github.io/-NG-D-NG-THI-N-NG-NH/'),
+        isWeb: true,
+      ),
+      isFalse,
+    );
+  });
 }

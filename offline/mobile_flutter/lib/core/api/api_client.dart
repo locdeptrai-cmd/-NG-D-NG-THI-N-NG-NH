@@ -65,6 +65,14 @@ class ApiClient {
       _dio.options.baseUrl = _effectiveDefaultBaseUrl();
     }
 
+    // Public HTTPS PWA (GitHub Pages) must use the Render API by default.
+    // Clear stale localhost / LAN IP / wrong hosts saved from older sessions.
+    if (_isHostedPublicPage(Uri.base) &&
+        !_isKnownProductionApi(_dio.options.baseUrl)) {
+      _dio.options.baseUrl = productionBaseUrl;
+      await preferences.remove(_baseUrlKey);
+    }
+
     // Public HTTPS PWA must never stay on a loopback API target.
     if (kIsWeb &&
         !_isLoopbackHost(Uri.base.host) &&
@@ -148,6 +156,21 @@ class ApiClient {
   static bool _isLoopbackHost(String host) {
     return const {'localhost', '127.0.0.1', '::1', '0.0.0.0'}
         .contains(host.toLowerCase());
+  }
+
+  static bool _isHostedPublicPage(Uri pageUri) {
+    return kIsWeb &&
+        pageUri.scheme == 'https' &&
+        !_isLoopbackHost(pageUri.host);
+  }
+
+  static bool _isKnownProductionApi(String value) {
+    try {
+      final host = Uri.parse(value).host.toLowerCase();
+      return host == Uri.parse(productionBaseUrl).host.toLowerCase();
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<bool> hasSession() async {
