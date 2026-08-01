@@ -138,7 +138,7 @@ def management_dashboard(request):
             if result.get("imported", 0) <= 0:
                 messages.error(
                     request,
-                    "Import không ghi được câu nào. Kiểm tra header QUESTION/ANS và A/B (hoặc 1/2) cùng cột rating (APS/ADC/ACC HAN/SUP).",
+                    "Import không ghi được câu nào. Kiểm tra header QUESTION/ANS và A/B (hoặc 1/2) cùng cột rating (APS/ADC/ACC HAN/SUP/SUP ACS HAN).",
                 )
             else:
                 messages.success(

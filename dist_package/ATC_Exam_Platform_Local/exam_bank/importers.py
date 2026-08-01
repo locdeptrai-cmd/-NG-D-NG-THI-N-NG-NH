@@ -24,7 +24,7 @@ EXCEL_DB_MAP = [
     ("ANS", "correct answer (A-D or 1-4)"),
     (
         "rating / RATING",
-        "subject group(s) APS/ADC/ACC HAN/SUP (optional; multi allowed e.g. SUP,APS — SUP may overlap ADC/APS)",
+        "subject group(s) APS/ADC/ACC HAN/SUP/SUP ACS HAN (optional; multi allowed e.g. SUP,APS)",
     ),
 ]
 
@@ -134,6 +134,10 @@ def _canonical_rating_token(token):
         "ACC HAN": "ACC HAN",
         "ACC HN": "ACC HAN",
         "ACCHN": "ACC HAN",
+        "SUP ACS HAN": "SUP ACS HAN",
+        "SUPACSHAN": "SUP ACS HAN",
+        "SUP_ACS_HAN": "SUP ACS HAN",
+        "SUP ACS": "SUP ACS HAN",
     }
     if token in aliases and aliases[token] in SUBJECT_GROUPS:
         return aliases[token]
@@ -148,18 +152,18 @@ def _canonical_rating_token(token):
 
 
 def _parse_rating_values(value):
-    """Parse one or many ratings from a cell (APS, ADC, ACC HAN, SUP).
+    """Parse one or many ratings from a cell (APS, ADC, ACC HAN, SUP, SUP ACS HAN).
 
     SUP questions may also belong to APS and/or ADC, so values like
     ``SUP,APS``, ``ADC/SUP``, or ``APS ADC SUP`` are supported.
-    ``ACC HAN`` (aliases: ACC, ACC_HAN, ACCHAN) is a dedicated bank.
+    ``ACC HAN`` / ``SUP ACS HAN`` are dedicated banks (keep multi-word intact).
     """
     text = _normalize(value).upper()
     if not text:
         return []
 
     found = []
-    # Prefer comma/slash separators so "ACC HAN" stays intact as one chunk.
+    # Prefer comma/slash separators so multi-word groups stay intact.
     chunks = re.split(r"[,;/|]+", text)
     for chunk in chunks:
         chunk = re.sub(r"[\s_\-]+", " ", chunk).strip()
@@ -170,7 +174,15 @@ def _parse_rating_values(value):
             if code not in found:
                 found.append(code)
             continue
-        for token in chunk.split():
+        # Longest multi-word SUBJECT_GROUPS first (e.g. SUP ACS HAN before SUP).
+        remainder = f" {chunk} "
+        for code in sorted(SUBJECT_GROUPS, key=lambda c: len(c), reverse=True):
+            needle = f" {code} "
+            if needle in remainder:
+                if code not in found:
+                    found.append(code)
+                remainder = remainder.replace(needle, " ")
+        for token in remainder.split():
             code = _canonical_rating_token(token)
             if code and code not in found:
                 found.append(code)
@@ -197,9 +209,9 @@ def _resolve_subject_targets(path: Path, subject_codes, rating_explicit: bool):
     """Route each question to subject DB(s).
 
     Priority:
-    1) Explicit rating cell(s) in file (APS/ADC/ACC HAN/SUP; multi allowed, SUP may overlap)
+    1) Explicit rating cell(s) in file (APS/ADC/ACC HAN/SUP/SUP ACS HAN; multi allowed)
     2) Form/default group chosen at import time
-    3) Legacy filename heuristics (only when form group is APS/ADC, not ACC HAN/SUP)
+    3) Legacy filename heuristics (only when form group is APS/ADC)
     """
     if isinstance(subject_codes, str):
         codes = [subject_codes] if subject_codes in SUBJECT_GROUPS else []
@@ -207,6 +219,7 @@ def _resolve_subject_targets(path: Path, subject_codes, rating_explicit: bool):
         codes = [c for c in (subject_codes or []) if c in SUBJECT_GROUPS]
 
     order = {code: i for i, code in enumerate(SUBJECT_GROUPS)}
+    dedicated = {"SUP", "ACC HAN", "SUP ACS HAN"}
 
     if rating_explicit and codes:
         return sorted(dict.fromkeys(codes), key=lambda c: order.get(c, 99))
@@ -214,11 +227,15 @@ def _resolve_subject_targets(path: Path, subject_codes, rating_explicit: bool):
     if not codes:
         codes = ["APS"]
 
-    # Dedicated banks must not be overridden by LTC/GCU filename heuristics.
-    if "SUP" in codes or "ACC HAN" in codes:
+    # Dedicated banks must not be overridden by LTC/GCU/ACC filename heuristics.
+    if dedicated.intersection(codes):
         return sorted(dict.fromkeys(codes), key=lambda c: order.get(c, 99))
 
     tokens = _source_tokens(path)
+    if "SUPACS" in "".join(tokens) or (
+        "SUP" in tokens and "ACS" in tokens and "HAN" in tokens
+    ):
+        return ["SUP ACS HAN"]
     if ("ACC" in tokens and "HAN" in tokens) or "ACCHAN" in tokens or "ACC" in tokens:
         return ["ACC HAN"]
     if "LTC" in tokens and set(codes) <= {"APS", "ADC"}:

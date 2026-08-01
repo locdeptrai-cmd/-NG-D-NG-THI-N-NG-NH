@@ -220,6 +220,16 @@ class XlsxImportTests(TestCase):
         self.assertEqual(records[0]["ans"], "A")
         self.assertEqual(records[0]["subject_codes"], ["ACC HAN"])
 
+    def test_rating_sup_acs_han_maps_to_dedicated_group(self):
+        self.assertIn("SUP ACS HAN", SUBJECT_GROUPS)
+        self.assertEqual(_parse_rating_values("SUP ACS HAN"), ["SUP ACS HAN"])
+        self.assertEqual(
+            _resolve_subject_targets(
+                Path("NHCH KT ACC.xlsx"), ["SUP ACS HAN"], True
+            ),
+            ["SUP ACS HAN"],
+        )
+
     def test_rating_acc_han_maps_to_acc_han_subject_group(self):
         import tempfile
 

@@ -38,7 +38,7 @@ Bundle ID hiện tại: `com.atc.offline.atcOfflineMobile`
 
 ## Đã chuẩn bị sẵn trong repo
 - Project Flutter đầy đủ platform `ios/` + `android/`
-- UI nhóm đề: **APS / ADC / ACC HAN / SUP**
+- UI nhóm đề: **APS / ADC / ACC HAN / SUP / SUP ACS HAN**
 - DB offline nhúng: `assets/offline_exam.db`
 
 ## Trên máy Mac (để ra file cài iPhone)
