@@ -36,10 +36,22 @@ void main() {
 
   test('excludes questions from recent sessions and avoids duplicates', () {
     final questions = <QuestionItem>[];
-    for (var id = 1; id <= 120; id++) {
-      questions.add(_question(id, id % 8, id <= 40));
+    var id = 1;
+    for (var category = 1; category <= 4; category++) {
+      for (var index = 0; index < 20; index++) {
+        questions.add(_question(id++, category, true));
+      }
     }
-    final excluded = questions.take(60).map((item) => item.id).toSet();
+    for (var category = 5; category <= 10; category++) {
+      for (var index = 0; index < 20; index++) {
+        questions.add(_question(id++, category, false));
+      }
+    }
+    // Exclude 6 prior 10-question sessions without draining the TSN pool.
+    final excluded = <int>{
+      ...questions.where(isTsnQuestion).take(24).map((item) => item.id),
+      ...questions.where((item) => !isTsnQuestion(item)).take(36).map((item) => item.id),
+    };
     final selected = selectBalancedMockQuestions(
       questions,
       20,
