@@ -8,11 +8,15 @@ staticfiles/
 offline/windows/build/
 .sixth/
 output/playwright/
+output/backups/
+output/github-artifacts/
 .playwright-cli/
+/.pub-cache/
 /login-bg2.png
 /home-bg.png
 
 offline/mobile_flutter/.dart_tool/
+offline/mobile_flutter/.flutter-plugins-dependencies
 offline/mobile_flutter/.idea/
 offline/mobile_flutter/build/
 
