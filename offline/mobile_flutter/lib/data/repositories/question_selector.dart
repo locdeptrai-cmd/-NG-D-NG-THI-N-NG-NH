@@ -4,6 +4,7 @@ import '../models/exam_models.dart';
 
 const supportedMockQuestionCounts = [10, 20, 50];
 const tsnQuestionPercent = 35;
+const recentExamExclusionLimit = 6;
 
 int tsnTargetCount(int total) {
   if (!supportedMockQuestionCounts.contains(total)) {
@@ -56,8 +57,20 @@ List<QuestionItem> selectBalancedMockQuestions(
     ..._balancedTake(tsn, tsnCount, rng),
     ..._balancedTake(other, otherCount, rng),
   ];
-  selected.shuffle(rng);
-  return selected;
+  final unique = <QuestionItem>[];
+  final seenIds = <int>{};
+  for (final question in selected) {
+    if (!seenIds.add(question.id)) continue;
+    unique.add(question);
+  }
+  if (unique.length != total) {
+    throw StateError(
+      'Không tạo được đề $total câu không trùng '
+      '(chỉ chọn được ${unique.length} câu).',
+    );
+  }
+  unique.shuffle(rng);
+  return unique;
 }
 
 List<QuestionItem> _balancedTake(
@@ -66,7 +79,9 @@ List<QuestionItem> _balancedTake(
   Random random,
 ) {
   final buckets = <String, List<QuestionItem>>{};
+  final seenIds = <int>{};
   for (final question in questions) {
+    if (!seenIds.add(question.id)) continue;
     final key = question.categoryId?.toString() ?? question.category;
     buckets.putIfAbsent(key, () => []).add(question);
   }
@@ -76,12 +91,15 @@ List<QuestionItem> _balancedTake(
   }
 
   final selected = <QuestionItem>[];
+  final selectedIds = <int>{};
   while (selected.length < count) {
     var progressed = false;
     for (final key in keys) {
       final bucket = buckets[key]!;
       if (bucket.isEmpty) continue;
-      selected.add(bucket.removeLast());
+      final question = bucket.removeLast();
+      if (!selectedIds.add(question.id)) continue;
+      selected.add(question);
       progressed = true;
       if (selected.length == count) break;
     }

@@ -469,27 +469,37 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
-  Future<Set<int>> latestCompletedQuestionIds(String subjectCode) async {
-    final row = await (select(localAttempts)
+  Future<Set<int>> latestCompletedQuestionIds(String subjectCode) {
+    return recentCompletedQuestionIds(subjectCode, limit: 1);
+  }
+
+  Future<Set<int>> recentCompletedQuestionIds(
+    String subjectCode, {
+    int limit = 6,
+  }) async {
+    final rows = await (select(localAttempts)
           ..where(
             (item) =>
                 item.subjectCode.equals(subjectCode) &
                 item.completedAt.isNotNull(),
           )
           ..orderBy([(item) => OrderingTerm.desc(item.completedAt)])
-          ..limit(1))
-        .getSingleOrNull();
-    if (row == null) return {};
-    try {
-      final answers = jsonDecode(row.answersJson) as List<dynamic>;
-      return answers
-          .map((item) => item as Map<String, dynamic>)
-          .map((item) => (item['question_id'] as num?)?.toInt())
-          .whereType<int>()
-          .toSet();
-    } catch (_) {
-      return {};
+          ..limit(limit))
+        .get();
+    final excluded = <int>{};
+    for (final row in rows) {
+      try {
+        final answers = jsonDecode(row.answersJson) as List<dynamic>;
+        for (final item in answers) {
+          final questionId =
+              ((item as Map<String, dynamic>)['question_id'] as num?)?.toInt();
+          if (questionId != null) excluded.add(questionId);
+        }
+      } catch (_) {
+        // Ignore malformed local history rows.
+      }
     }
+    return excluded;
   }
 
   Future<void> cacheUser(UserProfile profile) async {

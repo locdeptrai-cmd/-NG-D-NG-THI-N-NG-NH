@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -70,7 +72,7 @@ class PwaApiTests(APITestCase):
         self.assertEqual(me.status_code, 200)
         self.assertEqual(me.data["username"], "pwa-user")
 
-    def test_practice_start_uses_tsn_ratio_and_excludes_latest_attempt(self):
+    def test_practice_start_uses_tsn_ratio_and_excludes_recent_attempts(self):
         tsn_category = Category.objects.create(
             subject=self.subject,
             name="TSN procedures",
@@ -79,7 +81,7 @@ class PwaApiTests(APITestCase):
             subject=self.subject,
             name="Other procedures",
         )
-        for index in range(30):
+        for index in range(50):
             question = Question.objects.create(
                 code=f"ADC-TSN-API-{index}",
                 content=f"TSN question {index}",
@@ -100,7 +102,7 @@ class PwaApiTests(APITestCase):
                 is_correct=False,
                 order=2,
             )
-        for index in range(40):
+        for index in range(80):
             question = Question.objects.create(
                 code=f"ADC-GENERAL-API-{index}",
                 content=f"General question {index}",
@@ -123,38 +125,47 @@ class PwaApiTests(APITestCase):
             )
 
         self.login()
-        first = self.client.post(
-            reverse("api_practice_start"),
-            {"subject_id": self.subject.id, "question_count": 20},
-            format="json",
-        )
-        self.assertEqual(first.status_code, 200)
-        self.assertEqual(first.data["distribution"]["tsn_question_count"], 7)
-        first_ids = {item["id"] for item in first.data["questions"]}
-        PracticeAttempt.objects.create(
-            user=self.user,
-            local_attempt_id="previous-api-session",
-            subject=self.subject,
-            started_at=timezone.now(),
-            completed_at=timezone.now(),
-            score=0,
-            total_questions=20,
-            correct_answers=0,
-            answers=[{"question_id": question_id} for question_id in first_ids],
-        )
+        excluded = set()
+        base = timezone.now()
+        for session_index in range(6):
+            response = self.client.post(
+                reverse("api_practice_start"),
+                {"subject_id": self.subject.id, "question_count": 10},
+                format="json",
+            )
+            self.assertEqual(response.status_code, 200)
+            if session_index == 0:
+                self.assertEqual(response.data["distribution"]["tsn_question_count"], 4)
+            session_ids = {item["id"] for item in response.data["questions"]}
+            self.assertEqual(len(session_ids), 10)
+            self.assertFalse(session_ids & excluded)
+            PracticeAttempt.objects.create(
+                user=self.user,
+                local_attempt_id=f"previous-api-session-{session_index}",
+                subject=self.subject,
+                started_at=base + timedelta(minutes=session_index),
+                completed_at=base + timedelta(minutes=session_index),
+                score=0,
+                total_questions=10,
+                correct_answers=0,
+                answers=[{"question_id": question_id} for question_id in session_ids],
+            )
+            excluded.update(session_ids)
 
-        second = self.client.post(
+        seventh = self.client.post(
             reverse("api_practice_start"),
-            {"subject_id": self.subject.id, "question_count": 20},
+            {"subject_id": self.subject.id, "question_count": 10},
             format="json",
         )
-        self.assertEqual(second.status_code, 200)
-        second_ids = {item["id"] for item in second.data["questions"]}
-        self.assertFalse(first_ids & second_ids)
+        self.assertEqual(seventh.status_code, 200)
+        seventh_ids = {item["id"] for item in seventh.data["questions"]}
+        self.assertEqual(len(seventh_ids), 10)
+        self.assertFalse(seventh_ids & excluded)
         self.assertEqual(
-            second.data["distribution"]["excluded_previous_questions"],
-            20,
+            seventh.data["distribution"]["excluded_previous_questions"],
+            len(excluded),
         )
+        self.assertEqual(seventh.data["distribution"]["recent_exams_excluded"], 6)
 
     def test_practice_package_contains_solution_and_checksum(self):
         self.login()

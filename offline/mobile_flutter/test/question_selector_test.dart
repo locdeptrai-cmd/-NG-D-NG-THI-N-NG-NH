@@ -34,20 +34,22 @@ void main() {
     }
   });
 
-  test('excludes every question from the latest completed session', () {
+  test('excludes questions from recent sessions and avoids duplicates', () {
     final questions = <QuestionItem>[];
-    for (var id = 1; id <= 80; id++) {
-      questions.add(_question(id, id % 8, id <= 30));
+    for (var id = 1; id <= 120; id++) {
+      questions.add(_question(id, id % 8, id <= 40));
     }
-    final excluded = questions.take(10).map((item) => item.id).toSet();
+    final excluded = questions.take(60).map((item) => item.id).toSet();
     final selected = selectBalancedMockQuestions(
       questions,
       20,
       excludedQuestionIds: excluded,
       random: Random(3),
     );
-    expect(selected.map((item) => item.id).toSet().intersection(excluded),
-        isEmpty);
+    final selectedIds = selected.map((item) => item.id).toList();
+    expect(selectedIds.toSet().intersection(excluded), isEmpty);
+    expect(selectedIds.toSet(), hasLength(selectedIds.length));
+    expect(recentExamExclusionLimit, 6);
   });
 }
 

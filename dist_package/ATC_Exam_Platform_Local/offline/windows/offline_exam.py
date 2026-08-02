@@ -10,6 +10,7 @@ from tkinter import messagebox
 
 QUESTION_COUNTS = (10, 20, 50)
 TSN_PERCENT = 35
+RECENT_EXAM_EXCLUSION_LIMIT = 6
 
 
 def bundled_path(relative_path):
@@ -71,7 +72,14 @@ def balanced_take(questions, count, rng):
 def select_balanced_exam(pool, total, excluded_ids=None, rng=None):
     rng = rng or random.SystemRandom()
     excluded_ids = set(excluded_ids or [])
-    available = [item for item in pool if item["id"] not in excluded_ids]
+    seen_ids = set()
+    available = []
+    for item in pool:
+        question_id = item["id"]
+        if question_id in excluded_ids or question_id in seen_ids:
+            continue
+        seen_ids.add(question_id)
+        available.append(item)
     tsn_count = tsn_target_count(total)
     other_count = total - tsn_count
     tsn_pool = [item for item in available if is_tsn_question(item)]
@@ -88,8 +96,45 @@ def select_balanced_exam(pool, total, excluded_ids=None, rng=None):
         *balanced_take(tsn_pool, tsn_count, rng),
         *balanced_take(other_pool, other_count, rng),
     ]
-    rng.shuffle(selected)
-    return selected
+    unique = []
+    unique_ids = set()
+    for item in selected:
+        if item["id"] in unique_ids:
+            continue
+        unique_ids.add(item["id"])
+        unique.append(item)
+    if len(unique) != total:
+        raise ValueError(
+            f"Không tạo được đề {total} câu không trùng "
+            f"(chỉ chọn được {len(unique)} câu)."
+        )
+    rng.shuffle(unique)
+    return unique
+
+
+def normalize_subject_history(value):
+    """Return list of up to N prior exams, each exam a list of question ids."""
+    if not value:
+        return []
+    if isinstance(value, list) and value and isinstance(value[0], list):
+        exams = []
+        for exam in value:
+            if not isinstance(exam, list):
+                continue
+            exams.append([int(question_id) for question_id in exam])
+        return exams[-RECENT_EXAM_EXCLUSION_LIMIT:]
+    # Legacy flat list = one previous exam.
+    try:
+        return [[int(question_id) for question_id in value]]
+    except (TypeError, ValueError):
+        return []
+
+
+def excluded_ids_from_history(history, subject):
+    excluded = set()
+    for exam_ids in normalize_subject_history(history.get(subject)):
+        excluded.update(exam_ids)
+    return excluded
 
 
 class OfflineExamApp(tk.Tk):
@@ -158,9 +203,15 @@ class OfflineExamApp(tk.Tk):
 
     def load_history(self):
         try:
-            return json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
+            raw = json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
         except (OSError, ValueError, TypeError):
             return {}
+        if not isinstance(raw, dict):
+            return {}
+        return {
+            subject: normalize_subject_history(value)
+            for subject, value in raw.items()
+        }
 
     def save_history(self):
         try:
@@ -171,6 +222,15 @@ class OfflineExamApp(tk.Tk):
             )
         except OSError:
             pass
+
+    def excluded_question_ids(self, subject):
+        return excluded_ids_from_history(self.question_history, subject)
+
+    def remember_exam(self, subject, question_ids):
+        exams = normalize_subject_history(self.question_history.get(subject))
+        exams.append([int(question_id) for question_id in question_ids])
+        self.question_history[subject] = exams[-RECENT_EXAM_EXCLUSION_LIMIT:]
+        self.save_history()
 
     def show_start_screen(self):
         self.clear_container()
@@ -240,7 +300,7 @@ class OfflineExamApp(tk.Tk):
             self.current_exam = select_balanced_exam(
                 pool,
                 question_count,
-                excluded_ids=self.question_history.get(subject, []),
+                excluded_ids=self.excluded_question_ids(subject),
             )
         except ValueError as exc:
             messagebox.showwarning("Thiếu dữ liệu", str(exc))
@@ -315,8 +375,7 @@ class OfflineExamApp(tk.Tk):
 
         score = round((correct / len(self.current_exam)) * 10, 2)
         subject = self.current_exam[0]["subject"]
-        self.question_history[subject] = [item["id"] for item in self.current_exam]
-        self.save_history()
+        self.remember_exam(subject, [item["id"] for item in self.current_exam])
         self.show_result(score, correct, len(self.current_exam))
 
     def show_result(self, score, correct, total):

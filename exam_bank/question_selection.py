@@ -2,12 +2,18 @@ import random
 import re
 import unicodedata
 from collections import Counter, defaultdict
+from datetime import datetime, timezone as dt_timezone
+
+from django.utils import timezone
 
 from .models import Attempt, PracticeAttempt, Question
 
 
 ALLOWED_MOCK_QUESTION_COUNTS = (10, 20, 50)
 TSN_PERCENT = 35
+# Skip questions that appeared in any of the user's last N completed
+# practice/mock exams for the same subject.
+RECENT_EXAM_EXCLUSION_LIMIT = 6
 
 
 class QuestionSelectionError(ValueError):
@@ -63,13 +69,18 @@ def _balanced_take(questions, count, rng):
         rng.shuffle(bucket)
 
     selected = []
+    seen_ids = set()
     while len(selected) < count:
         progressed = False
         for key in keys:
             bucket = buckets[key]
             if not bucket:
                 continue
-            selected.append(bucket.pop())
+            question = bucket.pop()
+            if question.id in seen_ids:
+                continue
+            seen_ids.add(question.id)
+            selected.append(question)
             progressed = True
             if len(selected) == count:
                 break
@@ -103,7 +114,11 @@ def select_balanced_mock_questions(
 
     tsn_pool = []
     other_pool = []
+    seen_ids = set()
     for question in queryset:
+        if question.id in seen_ids:
+            continue
+        seen_ids.add(question.id)
         (tsn_pool if is_tsn_question(question) else other_pool).append(question)
 
     if len(tsn_pool) < tsn_count:
@@ -120,8 +135,21 @@ def select_balanced_mock_questions(
     selected_tsn = _balanced_take(tsn_pool, tsn_count, rng)
     selected_other = _balanced_take(other_pool, other_count, rng)
     selected = [*selected_tsn, *selected_other]
-    rng.shuffle(selected)
-    return selected, {
+    # Guard: never allow duplicate question ids inside one exam.
+    unique_selected = []
+    unique_ids = set()
+    for question in selected:
+        if question.id in unique_ids:
+            continue
+        unique_ids.add(question.id)
+        unique_selected.append(question)
+    if len(unique_selected) != total_questions:
+        raise QuestionSelectionError(
+            f"Không tạo được đề {total_questions} câu không trùng "
+            f"(chỉ chọn được {len(unique_selected)} câu)."
+        )
+    rng.shuffle(unique_selected)
+    return unique_selected, {
         "total_questions": total_questions,
         "tsn_percent": TSN_PERCENT,
         "tsn_question_count": len(selected_tsn),
@@ -129,44 +157,70 @@ def select_balanced_mock_questions(
         "tsn_categories": dict(Counter(q.category.name for q in selected_tsn)),
         "other_categories": dict(Counter(q.category.name for q in selected_other)),
         "excluded_previous_questions": len(excluded_question_ids),
+        "recent_exams_excluded": RECENT_EXAM_EXCLUSION_LIMIT,
     }
 
 
-def latest_completed_question_ids(user, subject):
-    candidates = []
-    exam_attempt = (
+def _session_sort_key(item):
+    completed_at, tie_breaker, _question_ids = item
+    if completed_at is None:
+        completed_at = datetime.min.replace(tzinfo=dt_timezone.utc)
+    elif timezone.is_naive(completed_at):
+        completed_at = timezone.make_aware(
+            completed_at, timezone.get_current_timezone()
+        )
+    return (completed_at, tie_breaker)
+
+
+def recent_completed_question_ids(
+    user,
+    subject,
+    limit=RECENT_EXAM_EXCLUSION_LIMIT,
+):
+    """Union of question ids from the user's last N completed exams/practices."""
+    sessions = []
+
+    exam_attempts = (
         Attempt.objects.filter(
             user=user,
             exam__subject=subject,
             status=Attempt.STATUS_SUBMITTED,
         )
         .select_related("exam")
-        .order_by("-submitted_at", "-id")
-        .first()
+        .prefetch_related("exam__exam_questions")
+        .order_by("-submitted_at", "-id")[:limit]
     )
-    if exam_attempt is not None:
-        candidates.append(
+    for attempt in exam_attempts:
+        sessions.append(
             (
-                exam_attempt.submitted_at or exam_attempt.started_at,
+                attempt.submitted_at or attempt.started_at,
+                attempt.id,
                 set(
-                    exam_attempt.exam.exam_questions.values_list(
-                        "question_id", flat=True
-                    )
+                    attempt.exam.exam_questions.values_list("question_id", flat=True)
                 ),
             )
         )
 
-    practice_attempt = (
-        PracticeAttempt.objects.filter(user=user, subject=subject)
-        .order_by("-completed_at", "-id")
-        .first()
-    )
-    if practice_attempt is not None:
+    practice_attempts = PracticeAttempt.objects.filter(
+        user=user,
+        subject=subject,
+        completed_at__isnull=False,
+    ).order_by("-completed_at", "-id")[:limit]
+    for practice in practice_attempts:
         question_ids = {
             int(item["question_id"])
-            for item in practice_attempt.answers
+            for item in (practice.answers or [])
             if str(item.get("question_id", "")).isdigit()
         }
-        candidates.append((practice_attempt.completed_at, question_ids))
+        sessions.append((practice.completed_at, practice.id, question_ids))
 
-    return max(candidates, key=lambda item: item[0])[1] if candidates else set()
+    sessions.sort(key=_session_sort_key, reverse=True)
+    excluded = set()
+    for _completed_at, _tie_breaker, question_ids in sessions[:limit]:
+        excluded.update(question_ids)
+    return excluded
+
+
+def latest_completed_question_ids(user, subject):
+    """Backward-compatible alias for the most recent completed exam only."""
+    return recent_completed_question_ids(user, subject, limit=1)

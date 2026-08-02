@@ -1,7 +1,13 @@
 import random
 import unittest
 
-from offline_exam import is_tsn_question, select_balanced_exam, tsn_target_count
+from offline_exam import (
+    excluded_ids_from_history,
+    is_tsn_question,
+    normalize_subject_history,
+    select_balanced_exam,
+    tsn_target_count,
+)
 
 
 class OfflineQuestionSelectionTests(unittest.TestCase):
@@ -47,6 +53,30 @@ class OfflineQuestionSelectionTests(unittest.TestCase):
             rng=random.Random(2),
         )
         self.assertFalse({item["id"] for item in selected} & excluded)
+        self.assertEqual(len(selected), len({item["id"] for item in selected}))
+
+    def test_history_keeps_last_six_exams(self):
+        history = {
+            "ADC": [
+                list(range(1, 11)),
+                list(range(11, 21)),
+                list(range(21, 31)),
+                list(range(31, 41)),
+                list(range(41, 51)),
+                list(range(51, 61)),
+                list(range(61, 71)),
+            ]
+        }
+        normalized = normalize_subject_history(history["ADC"])
+        self.assertEqual(len(normalized), 6)
+        self.assertEqual(normalized[0][0], 11)
+        excluded = excluded_ids_from_history(history, "ADC")
+        self.assertEqual(excluded, set(range(11, 71)))
+        # Legacy flat list still works as one prior exam.
+        self.assertEqual(
+            normalize_subject_history(list(range(1, 6))),
+            [list(range(1, 6))],
+        )
 
 
 if __name__ == "__main__":

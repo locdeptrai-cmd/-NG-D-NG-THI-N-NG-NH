@@ -39,7 +39,7 @@ from .serializers import (
 from .question_selection import (
     ALLOWED_MOCK_QUESTION_COUNTS,
     QuestionSelectionError,
-    latest_completed_question_ids,
+    recent_completed_question_ids,
     select_balanced_mock_questions,
 )
 
@@ -124,7 +124,7 @@ class PracticeStartAPIView(APIView):
             raise ValidationError(
                 {"question_count": "Số câu chỉ được chọn 10, 20 hoặc 50."}
             )
-        previous_ids = latest_completed_question_ids(request.user, subject)
+        previous_ids = recent_completed_question_ids(request.user, subject)
         try:
             questions, distribution = select_balanced_mock_questions(
                 subject,

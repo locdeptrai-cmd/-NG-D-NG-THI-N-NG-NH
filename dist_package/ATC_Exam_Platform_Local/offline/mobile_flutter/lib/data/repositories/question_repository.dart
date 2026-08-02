@@ -85,7 +85,7 @@ class QuestionRepository {
       throw StateError('Gói ${package.subject.code} chưa được tải.');
     }
     final excluded =
-        await _database.latestCompletedQuestionIds(package.subject.code);
+        await _database.recentCompletedQuestionIds(package.subject.code);
     final selected = selectBalancedMockQuestions(
       available,
       questionCount,

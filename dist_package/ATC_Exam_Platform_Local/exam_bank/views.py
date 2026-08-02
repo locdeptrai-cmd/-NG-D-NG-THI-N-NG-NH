@@ -28,7 +28,7 @@ from .question_selection import (
     ALLOWED_MOCK_QUESTION_COUNTS,
     QuestionSelectionError,
     is_tsn_question,
-    latest_completed_question_ids,
+    recent_completed_question_ids,
     select_balanced_mock_questions,
 )
 
@@ -194,7 +194,7 @@ def start_exam(request):
             messages.error(request, "Số câu chỉ được chọn 10, 20 hoặc 50.")
             return redirect("start_exam")
 
-        previous_ids = latest_completed_question_ids(request.user, subject)
+        previous_ids = recent_completed_question_ids(request.user, subject)
         try:
             selected, distribution = select_balanced_mock_questions(
                 subject,
@@ -213,7 +213,7 @@ def start_exam(request):
             mix_answers=True,
             matrix_config={
                 "group": group_code,
-                "strategy": "tsn_35_balanced_categories_no_previous",
+                "strategy": "tsn_35_balanced_categories_no_last_6",
                 **distribution,
             },
             created_by=request.user,

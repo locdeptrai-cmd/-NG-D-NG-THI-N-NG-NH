@@ -8,6 +8,8 @@ from unittest.mock import patch
 from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
+from datetime import timedelta
+
 from django.utils import timezone
 
 from .importers import (
@@ -31,7 +33,8 @@ from .models import (
 )
 from .question_selection import (
     is_tsn_question,
-    latest_completed_question_ids,
+    RECENT_EXAM_EXCLUSION_LIMIT,
+    recent_completed_question_ids,
     select_balanced_mock_questions,
     tsn_target_count,
 )
@@ -363,30 +366,54 @@ class BalancedQuestionSelectionTests(TestCase):
                 counts = Counter(question.category_id for question in part)
                 self.assertLessEqual(max(counts.values()) - min(counts.values()), 1)
 
-    def test_next_web_exam_excludes_latest_submitted_exam(self):
-        previous, _ = select_balanced_mock_questions(
+    def test_selected_exam_has_no_duplicate_question_ids(self):
+        selected, _ = select_balanced_mock_questions(
             self.subject,
-            10,
-            rng=random.Random(1),
+            20,
+            rng=random.Random(9),
         )
-        exam = Exam.objects.create(name="Previous", subject=self.subject)
-        for order, question in enumerate(previous, start=1):
-            ExamQuestion.objects.create(exam=exam, question=question, order=order)
-        Attempt.objects.create(
-            exam=exam,
-            user=self.user,
-            status=Attempt.STATUS_SUBMITTED,
-            submitted_at=timezone.now(),
-        )
-        excluded = latest_completed_question_ids(self.user, self.subject)
+        ids = [question.id for question in selected]
+        self.assertEqual(len(ids), len(set(ids)))
+
+    def test_next_web_exam_excludes_last_six_submitted_exams(self):
+        all_excluded = set()
+        base = timezone.now()
+        for exam_index in range(RECENT_EXAM_EXCLUSION_LIMIT):
+            previous, _ = select_balanced_mock_questions(
+                self.subject,
+                10,
+                excluded_question_ids=all_excluded,
+                rng=random.Random(exam_index + 1),
+            )
+            exam = Exam.objects.create(
+                name=f"Previous {exam_index}",
+                subject=self.subject,
+            )
+            for order, question in enumerate(previous, start=1):
+                ExamQuestion.objects.create(
+                    exam=exam, question=question, order=order
+                )
+            Attempt.objects.create(
+                exam=exam,
+                user=self.user,
+                status=Attempt.STATUS_SUBMITTED,
+                submitted_at=base + timedelta(minutes=exam_index),
+            )
+            all_excluded.update(question.id for question in previous)
+
+        excluded = recent_completed_question_ids(self.user, self.subject)
+        self.assertEqual(excluded, all_excluded)
         selected, distribution = select_balanced_mock_questions(
             self.subject,
             10,
             excluded_question_ids=excluded,
-            rng=random.Random(2),
+            rng=random.Random(99),
         )
         self.assertFalse(set(question.id for question in selected) & excluded)
-        self.assertEqual(distribution["excluded_previous_questions"], 10)
+        self.assertEqual(distribution["excluded_previous_questions"], len(excluded))
+        self.assertEqual(
+            distribution["recent_exams_excluded"], RECENT_EXAM_EXCLUSION_LIMIT
+        )
 
         self.client.force_login(self.user)
         response = self.client.post(
@@ -399,6 +426,7 @@ class BalancedQuestionSelectionTests(TestCase):
             new_attempt.exam.exam_questions.values_list("question_id", flat=True)
         )
         self.assertEqual(len(new_ids), 10)
+        self.assertEqual(len(new_ids), len(new_attempt.exam.exam_questions.all()))
         self.assertFalse(new_ids & excluded)
         self.assertEqual(new_attempt.exam.matrix_config["tsn_question_count"], 4)
 
@@ -458,5 +486,66 @@ class SyncExamBankFromSqliteTests(TestCase):
             self.assertTrue(
                 Answer.objects.filter(question=question, label="A", is_correct=True).exists()
             )
+        finally:
+            source.unlink(missing_ok=True)
+
+    def test_sync_deletes_orphan_questions_not_in_source(self):
+        subject = Subject.objects.create(code="SUP", name="SUP")
+        category = Category.objects.create(subject=subject, name="General")
+        Question.objects.create(
+            code="SUP-OLD-1",
+            content="Old question?",
+            subject=subject,
+            category=category,
+            status=Question.STATUS_APPROVED,
+        )
+
+        with tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False) as tmp:
+            source = Path(tmp.name)
+
+        try:
+            conn = sqlite3.connect(source)
+            conn.executescript(
+                """
+                CREATE TABLE exam_bank_subject (
+                    id INTEGER PRIMARY KEY, code TEXT, name TEXT
+                );
+                CREATE TABLE exam_bank_document (
+                    id INTEGER PRIMARY KEY, code TEXT, title TEXT,
+                    description TEXT, url TEXT
+                );
+                CREATE TABLE exam_bank_category (
+                    id INTEGER PRIMARY KEY, name TEXT, subject_id INTEGER
+                );
+                CREATE TABLE exam_bank_question (
+                    id INTEGER PRIMARY KEY, code TEXT, content TEXT,
+                    explanation TEXT, question_type TEXT, subject_id INTEGER,
+                    category_id INTEGER, difficulty TEXT, topic TEXT,
+                    position_scope TEXT, status TEXT,
+                    is_locked_for_official_exam INTEGER,
+                    reference_document_id INTEGER
+                );
+                CREATE TABLE exam_bank_answer (
+                    id INTEGER PRIMARY KEY, question_id INTEGER, label TEXT,
+                    content TEXT, is_correct INTEGER, "order" INTEGER
+                );
+                INSERT INTO exam_bank_subject VALUES (1, 'SUP', 'SUP');
+                INSERT INTO exam_bank_category VALUES (1, 'General', 1);
+                INSERT INTO exam_bank_question VALUES (
+                    1, 'SUP-NEW-1', 'New question?', '', 'single', 1, 1,
+                    '', '', '', 'approved', 0, NULL
+                );
+                INSERT INTO exam_bank_answer VALUES
+                    (1, 1, 'A', 'Yes', 1, 1),
+                    (2, 1, 'B', 'No', 0, 2);
+                """
+            )
+            conn.close()
+
+            call_command("sync_exam_bank_from_sqlite", source=str(source))
+
+            self.assertFalse(Question.objects.filter(code="SUP-OLD-1").exists())
+            self.assertTrue(Question.objects.filter(code="SUP-NEW-1").exists())
+            self.assertEqual(Question.objects.filter(subject__code="SUP").count(), 1)
         finally:
             source.unlink(missing_ok=True)
