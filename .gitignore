@@ -24,3 +24,5 @@ flutter/android/.gradle/
 flutter/android/app/build/
 flutter/ios/Pods/
 flutter/ios/.symlinks/
+
+flutter/android/build/
