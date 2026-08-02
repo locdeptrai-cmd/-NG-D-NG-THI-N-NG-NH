@@ -1,11 +1,15 @@
+import json
+import os
 import random
+import re
 import sqlite3
 import sys
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox
 
-QUESTION_COUNT = 50
+QUESTION_COUNTS = (10, 20, 50)
+TSN_PERCENT = 35
 
 
 def bundled_path(relative_path):
@@ -15,6 +19,77 @@ def bundled_path(relative_path):
 
 
 DB_PATH = bundled_path(Path("data") / "offline_exam.db")
+HISTORY_PATH = (
+    Path(os.getenv("LOCALAPPDATA", Path.home()))
+    / "ATC_Offline_Exam"
+    / "question_history.json"
+)
+
+
+def is_tsn_question(question):
+    text = " ".join(
+        [question.get("code", ""), question.get("content", "")]
+    ).upper()
+    return bool(
+        re.search(r"(^|[^A-Z0-9])TSN([^A-Z0-9]|$)", text)
+        or "TÂN SƠN NHẤT" in text
+        or "TAN SON NHAT" in text
+        or "TANSONNHAT" in text
+    )
+
+
+def tsn_target_count(total):
+    if total not in QUESTION_COUNTS:
+        raise ValueError("Số câu chỉ được chọn 10, 20 hoặc 50.")
+    return round(total * TSN_PERCENT / 100)
+
+
+def balanced_take(questions, count, rng):
+    buckets = {}
+    for question in questions:
+        buckets.setdefault(question.get("category") or "Khác", []).append(question)
+    keys = list(buckets)
+    rng.shuffle(keys)
+    for bucket in buckets.values():
+        rng.shuffle(bucket)
+
+    selected = []
+    while len(selected) < count:
+        progressed = False
+        for key in keys:
+            if not buckets[key]:
+                continue
+            selected.append(buckets[key].pop())
+            progressed = True
+            if len(selected) == count:
+                break
+        if not progressed:
+            break
+    return selected
+
+
+def select_balanced_exam(pool, total, excluded_ids=None, rng=None):
+    rng = rng or random.SystemRandom()
+    excluded_ids = set(excluded_ids or [])
+    available = [item for item in pool if item["id"] not in excluded_ids]
+    tsn_count = tsn_target_count(total)
+    other_count = total - tsn_count
+    tsn_pool = [item for item in available if is_tsn_question(item)]
+    other_pool = [item for item in available if not is_tsn_question(item)]
+    if len(tsn_pool) < tsn_count:
+        raise ValueError(
+            f"Ngân hàng chỉ còn {len(tsn_pool)} câu TSN; cần {tsn_count} câu."
+        )
+    if len(other_pool) < other_count:
+        raise ValueError(
+            f"Ngân hàng chỉ còn {len(other_pool)} câu ngoài TSN; cần {other_count} câu."
+        )
+    selected = [
+        *balanced_take(tsn_pool, tsn_count, rng),
+        *balanced_take(other_pool, other_count, rng),
+    ]
+    rng.shuffle(selected)
+    return selected
 
 
 class OfflineExamApp(tk.Tk):
@@ -28,8 +103,10 @@ class OfflineExamApp(tk.Tk):
         self.current_exam = []
         self.current_index = 0
         self.user_answers = {}
+        self.question_history = self.load_history()
 
         self.subject_var = tk.StringVar(value="APS")
+        self.count_var = tk.IntVar(value=50)
         self.container = tk.Frame(self, bg="#0a2a66")
         self.container.pack(fill="both", expand=True, padx=16, pady=16)
 
@@ -79,6 +156,22 @@ class OfflineExamApp(tk.Tk):
         for w in self.container.winfo_children():
             w.destroy()
 
+    def load_history(self):
+        try:
+            return json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError):
+            return {}
+
+    def save_history(self):
+        try:
+            HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+            HISTORY_PATH.write_text(
+                json.dumps(self.question_history, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except OSError:
+            pass
+
     def show_start_screen(self):
         self.clear_container()
         title = tk.Label(self.container, text="Thi thử offline", bg="#0a2a66", fg="white", font=("Arial", 22, "bold"))
@@ -98,20 +191,61 @@ class OfflineExamApp(tk.Tk):
                 selectcolor="#0a2a66",
             ).pack(side="left", padx=8)
 
-        tk.Button(self.container, text="Bắt đầu thi 50 câu", command=self.start_exam, bg="white", fg="#0a2a66", font=("Arial", 12, "bold")).pack(pady=14)
+        count_frame = tk.Frame(self.container, bg="#0a2a66")
+        count_frame.pack(pady=8)
+        tk.Label(
+            count_frame,
+            text="Số câu:",
+            bg="#0a2a66",
+            fg="white",
+            font=("Arial", 14),
+        ).pack(side="left", padx=8)
+        for count in QUESTION_COUNTS:
+            tk.Radiobutton(
+                count_frame,
+                text=str(count),
+                variable=self.count_var,
+                value=count,
+                bg="#0a2a66",
+                fg="white",
+                selectcolor="#0a2a66",
+            ).pack(side="left", padx=8)
+
+        tk.Label(
+            self.container,
+            text=(
+                "35% câu TSN (4/10, 7/20, 18/50), 65% kiến thức còn lại; "
+                "chia đều theo loại và không lặp bài gần nhất."
+            ),
+            bg="#0a2a66",
+            fg="white",
+        ).pack(pady=6)
+        tk.Button(
+            self.container,
+            text="Bắt đầu thi",
+            command=self.start_exam,
+            bg="white",
+            fg="#0a2a66",
+            font=("Arial", 12, "bold"),
+        ).pack(pady=14)
 
         info = tk.Label(self.container, text=f"Nguồn dữ liệu: {DB_PATH.name}", bg="#0a2a66", fg="white")
         info.pack(pady=6)
 
     def start_exam(self):
         subject = self.subject_var.get()
+        question_count = self.count_var.get()
         pool = self.load_pool(subject)
-        if len(pool) < QUESTION_COUNT:
-            messagebox.showwarning("Thiếu dữ liệu", f"Nhóm {subject} chỉ có {len(pool)} câu, chưa đủ {QUESTION_COUNT}.")
+        try:
+            self.current_exam = select_balanced_exam(
+                pool,
+                question_count,
+                excluded_ids=self.question_history.get(subject, []),
+            )
+        except ValueError as exc:
+            messagebox.showwarning("Thiếu dữ liệu", str(exc))
             return
 
-        self.current_exam = random.sample(pool, QUESTION_COUNT)
-        random.shuffle(self.current_exam)
         self.current_index = 0
         self.user_answers = {}
         self.show_question()
@@ -180,6 +314,9 @@ class OfflineExamApp(tk.Tk):
                 correct += 1
 
         score = round((correct / len(self.current_exam)) * 10, 2)
+        subject = self.current_exam[0]["subject"]
+        self.question_history[subject] = [item["id"] for item in self.current_exam]
+        self.save_history()
         self.show_result(score, correct, len(self.current_exam))
 
     def show_result(self, score, correct, total):

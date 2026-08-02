@@ -1,46 +1,74 @@
-# Hướng dẫn - Bản mobile offline (Flutter)
+# ATC Exam PWA / Mobile
 
-## Yêu cầu
-- Flutter SDK đã cài đặt
-- Android Studio (Android) / Xcode (iOS)
+Ứng dụng Flutter offline-first dùng chung cho Web/PWA, Android và iOS.
+Dữ liệu câu hỏi được tải từ Django REST API và lưu bằng Drift:
 
-## Chạy thử
+- Web: IndexedDB/OPFS thông qua SQLite WebAssembly.
+- Android/iOS: SQLite trong vùng dữ liệu ứng dụng.
+- Kết quả được lưu local trước, sau đó đưa vào `sync_queue`.
+
+## Chạy Web/PWA
+
 ```bash
-cd offline/mobile_flutter
 flutter pub get
-flutter run
+dart run build_runner build --delete-conflicting-outputs
+flutter run -d chrome --dart-define=ATC_API_BASE_URL=http://127.0.0.1:8000/api
 ```
 
-## Build Android
+Build production:
+
 ```bash
-build_android_one_file.bat
+flutter build web --release --dart-define=ATC_API_BASE_URL=https://example.com/api
 ```
 
-File cài đặt một file duy nhất:
-- `offline/dist/ATC_Offline_Mobile_Android.apk`
+Không mở `build/web/index.html` bằng `file://`; hãy phục vụ qua HTTP/HTTPS.
 
-## Build iOS (macOS)
+## GitHub Pages
+
+Workflow **Deploy ATC Exam PWA to GitHub Pages** build với base path:
+
+```text
+/-NG-D-NG-THI-N-NG-NH/
+```
+
+Địa chỉ xuất bản:
+
+```text
+https://locdeptrai-cmd.github.io/-NG-D-NG-THI-N-NG-NH/
+```
+
+Khai báo repository variable `ATC_API_BASE_URL` bằng URL API HTTPS trước khi
+deploy production. Nếu chưa có biến này, người dùng có thể chọn **Máy chủ** tại
+màn hình đăng nhập để nhập URL. Backend phải cho phép CORS origin
+`https://locdeptrai-cmd.github.io`.
+
+## Chạy mobile
+
+Trên Windows:
+
+```bat
+build_mobile_offline.bat
+```
+
+GitHub Actions: chạy workflow **Build Mobile Offline (iOS + Android)**.
+
+## API và dữ liệu
+
+Ngân hàng câu hỏi được lấy từ:
+
+```text
+GET /api/question-packages/
+GET /api/question-packages/{package_id}/download/
+POST /api/sync/
+```
+
+File `assets/questions.json` chỉ được giữ để đối chiếu dữ liệu cũ; runtime PWA
+không nạp toàn bộ ngân hàng vào service worker.
+
+## Kiểm tra
+
 ```bash
-chmod +x build_ios_one_file.sh
-./build_ios_one_file.sh
+flutter analyze
+flutter test
+flutter build web --release
 ```
-
-File cài đặt một file duy nhất:
-- `offline/dist/ATC_Offline_Mobile_iOS.ipa`
-
-Lưu ý: iOS bắt buộc build trên macOS và phải cấu hình signing bằng Apple Developer/Xcode.
-
-## DB offline
-App dùng DB SQLite local từ assets:
-- `assets/offline_exam.db`
-
-Khi cập nhật ngân hàng câu hỏi từ web DB:
-1. Tạo lại DB offline:
-```bash
-python ..\\build_offline_db.py
-```
-2. Copy DB mới vào assets:
-```bash
-copy ..\\data\\offline_exam.db assets\\offline_exam.db
-```
-3. Build lại app bằng `build_android_one_file.bat` hoặc `build_ios_one_file.sh`.

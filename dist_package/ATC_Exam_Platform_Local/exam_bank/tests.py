@@ -1,11 +1,14 @@
 import sqlite3
 import tempfile
+import random
+from collections import Counter
 from pathlib import Path
 from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .importers import (
     _parse_rating_values,
@@ -25,6 +28,12 @@ from .models import (
     Question,
     Subject,
     User,
+)
+from .question_selection import (
+    is_tsn_question,
+    latest_completed_question_ids,
+    select_balanced_mock_questions,
+    tsn_target_count,
 )
 
 
@@ -301,6 +310,97 @@ class ExamAccessTests(TestCase):
         response = self.client.get(reverse("exam_result", args=[self.attempt.id]))
 
         self.assertEqual(response.status_code, 403)
+
+
+class BalancedQuestionSelectionTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="balanced-candidate",
+            password="secret",
+        )
+        self.subject = Subject.objects.create(code="ADC", name="ADC")
+        self.tsn_categories = [
+            Category.objects.create(subject=self.subject, name=f"TSN {idx}")
+            for idx in range(4)
+        ]
+        self.other_categories = [
+            Category.objects.create(subject=self.subject, name=f"Other {idx}")
+            for idx in range(6)
+        ]
+        for category in self.tsn_categories:
+            for idx in range(15):
+                Question.objects.create(
+                    code=f"ADC-TSN-{category.id}-{idx}",
+                    content=f"Tan Son Nhat question {category.id}-{idx}",
+                    subject=self.subject,
+                    category=category,
+                    status=Question.STATUS_APPROVED,
+                )
+        for category in self.other_categories:
+            for idx in range(15):
+                Question.objects.create(
+                    code=f"ADC-GENERAL-{category.id}-{idx}",
+                    content=f"General question {category.id}-{idx}",
+                    subject=self.subject,
+                    category=category,
+                    status=Question.STATUS_APPROVED,
+                )
+
+    def test_tsn_ratio_and_categories_are_balanced_for_supported_sizes(self):
+        self.assertEqual([tsn_target_count(n) for n in (10, 20, 50)], [4, 7, 18])
+        for total, expected_tsn in ((10, 4), (20, 7), (50, 18)):
+            selected, distribution = select_balanced_mock_questions(
+                self.subject,
+                total,
+                rng=random.Random(total),
+            )
+            tsn = [question for question in selected if is_tsn_question(question)]
+            other = [question for question in selected if not is_tsn_question(question)]
+            self.assertEqual(len(selected), total)
+            self.assertEqual(len(tsn), expected_tsn)
+            self.assertEqual(distribution["tsn_question_count"], expected_tsn)
+            for part in (tsn, other):
+                counts = Counter(question.category_id for question in part)
+                self.assertLessEqual(max(counts.values()) - min(counts.values()), 1)
+
+    def test_next_web_exam_excludes_latest_submitted_exam(self):
+        previous, _ = select_balanced_mock_questions(
+            self.subject,
+            10,
+            rng=random.Random(1),
+        )
+        exam = Exam.objects.create(name="Previous", subject=self.subject)
+        for order, question in enumerate(previous, start=1):
+            ExamQuestion.objects.create(exam=exam, question=question, order=order)
+        Attempt.objects.create(
+            exam=exam,
+            user=self.user,
+            status=Attempt.STATUS_SUBMITTED,
+            submitted_at=timezone.now(),
+        )
+        excluded = latest_completed_question_ids(self.user, self.subject)
+        selected, distribution = select_balanced_mock_questions(
+            self.subject,
+            10,
+            excluded_question_ids=excluded,
+            rng=random.Random(2),
+        )
+        self.assertFalse(set(question.id for question in selected) & excluded)
+        self.assertEqual(distribution["excluded_previous_questions"], 10)
+
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("start_exam"),
+            {"group_code": "ADC", "question_count": "10"},
+        )
+        self.assertEqual(response.status_code, 302)
+        new_attempt = Attempt.objects.filter(user=self.user).latest("id")
+        new_ids = set(
+            new_attempt.exam.exam_questions.values_list("question_id", flat=True)
+        )
+        self.assertEqual(len(new_ids), 10)
+        self.assertFalse(new_ids & excluded)
+        self.assertEqual(new_attempt.exam.matrix_config["tsn_question_count"], 4)
 
 
 class SyncExamBankFromSqliteTests(TestCase):

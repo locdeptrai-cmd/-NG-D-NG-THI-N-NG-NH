@@ -1,0 +1,91 @@
+import 'dart:math';
+
+import '../models/exam_models.dart';
+
+const supportedMockQuestionCounts = [10, 20, 50];
+const tsnQuestionPercent = 35;
+
+int tsnTargetCount(int total) {
+  if (!supportedMockQuestionCounts.contains(total)) {
+    throw ArgumentError('Số câu chỉ được chọn 10, 20 hoặc 50.');
+  }
+  return (total * tsnQuestionPercent / 100).round();
+}
+
+bool isTsnQuestion(QuestionItem question) {
+  final text = [
+    question.code,
+    question.content,
+    question.topic,
+  ].join(' ').toUpperCase();
+  return RegExp(r'(^|[^A-Z0-9])TSN([^A-Z0-9]|$)').hasMatch(text) ||
+      text.contains('TÂN SƠN NHẤT') ||
+      text.contains('TAN SON NHAT') ||
+      text.contains('TANSONNHAT');
+}
+
+List<QuestionItem> selectBalancedMockQuestions(
+  List<QuestionItem> available,
+  int total, {
+  Set<int> excludedQuestionIds = const {},
+  Random? random,
+}) {
+  final rng = random ?? Random.secure();
+  final tsnCount = tsnTargetCount(total);
+  final otherCount = total - tsnCount;
+  final eligible = available
+      .where((question) => !excludedQuestionIds.contains(question.id))
+      .toList();
+  final tsn = eligible.where(isTsnQuestion).toList();
+  final other = eligible.where((question) => !isTsnQuestion(question)).toList();
+
+  if (tsn.length < tsnCount) {
+    throw StateError(
+      'Ngân hàng chỉ còn ${tsn.length} câu TSN; cần $tsnCount câu '
+      'để đạt tỷ lệ $tsnQuestionPercent%.',
+    );
+  }
+  if (other.length < otherCount) {
+    throw StateError(
+      'Ngân hàng chỉ còn ${other.length} câu ngoài TSN; '
+      'cần $otherCount câu.',
+    );
+  }
+
+  final selected = [
+    ..._balancedTake(tsn, tsnCount, rng),
+    ..._balancedTake(other, otherCount, rng),
+  ];
+  selected.shuffle(rng);
+  return selected;
+}
+
+List<QuestionItem> _balancedTake(
+  List<QuestionItem> questions,
+  int count,
+  Random random,
+) {
+  final buckets = <String, List<QuestionItem>>{};
+  for (final question in questions) {
+    final key = question.categoryId?.toString() ?? question.category;
+    buckets.putIfAbsent(key, () => []).add(question);
+  }
+  final keys = buckets.keys.toList()..shuffle(random);
+  for (final bucket in buckets.values) {
+    bucket.shuffle(random);
+  }
+
+  final selected = <QuestionItem>[];
+  while (selected.length < count) {
+    var progressed = false;
+    for (final key in keys) {
+      final bucket = buckets[key]!;
+      if (bucket.isEmpty) continue;
+      selected.add(bucket.removeLast());
+      progressed = true;
+      if (selected.length == count) break;
+    }
+    if (!progressed) break;
+  }
+  return selected;
+}

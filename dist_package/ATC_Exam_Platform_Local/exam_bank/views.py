@@ -1,5 +1,5 @@
 from pathlib import Path
-from random import sample, shuffle
+from random import shuffle
 from time import sleep
 from uuid import uuid4
 from django.conf import settings
@@ -24,8 +24,15 @@ from .models import (
     Subject,
     User,
 )
+from .question_selection import (
+    ALLOWED_MOCK_QUESTION_COUNTS,
+    QuestionSelectionError,
+    is_tsn_question,
+    latest_completed_question_ids,
+    select_balanced_mock_questions,
+)
 
-QUESTION_COUNT = 50
+DEFAULT_QUESTION_COUNT = 50
 
 
 def ensure_subject_groups():
@@ -177,29 +184,38 @@ def start_exam(request):
             return redirect("start_exam")
 
         subject = get_object_or_404(Subject, code=group_code)
-        pool = list(
-            Question.objects.filter(
-                subject=subject,
-                status=Question.STATUS_APPROVED,
-                is_locked_for_official_exam=False,
-            ).prefetch_related("answers")
-        )
-
-        if len(pool) < QUESTION_COUNT:
-            messages.error(
-                request,
-                f"Ngân hàng {group_code} hiện chỉ có {len(pool)} câu đã duyệt. Cần ít nhất {QUESTION_COUNT} câu.",
+        try:
+            question_count = int(
+                request.POST.get("question_count", DEFAULT_QUESTION_COUNT)
             )
+        except (TypeError, ValueError):
+            question_count = 0
+        if question_count not in ALLOWED_MOCK_QUESTION_COUNTS:
+            messages.error(request, "Số câu chỉ được chọn 10, 20 hoặc 50.")
             return redirect("start_exam")
 
-        selected = sample(pool, QUESTION_COUNT)
+        previous_ids = latest_completed_question_ids(request.user, subject)
+        try:
+            selected, distribution = select_balanced_mock_questions(
+                subject,
+                question_count,
+                excluded_question_ids=previous_ids,
+            )
+        except QuestionSelectionError as exc:
+            messages.error(request, str(exc))
+            return redirect("start_exam")
+
         exam = Exam.objects.create(
             name=f"Đề thi {group_code} - {timezone.now().strftime('%Y-%m-%d %H:%M')}",
             subject=subject,
             duration_minutes=60,
             mix_questions=True,
             mix_answers=True,
-            matrix_config={"group": group_code, "total_questions": QUESTION_COUNT},
+            matrix_config={
+                "group": group_code,
+                "strategy": "tsn_35_balanced_categories_no_previous",
+                **distribution,
+            },
             created_by=request.user,
         )
 
@@ -210,8 +226,28 @@ def start_exam(request):
         attempt = Attempt.objects.create(exam=exam, user=request.user)
         return redirect("take_exam", attempt_id=attempt.id)
 
-    subjects = Subject.objects.filter(code__in=SUBJECT_GROUPS).order_by("code")
-    return render(request, "start_exam.html", {"subjects": subjects, "question_count": QUESTION_COUNT})
+    subjects = list(
+        Subject.objects.filter(code__in=SUBJECT_GROUPS).order_by("code")
+    )
+    for subject in subjects:
+        questions = list(
+            Question.objects.filter(
+                subject=subject,
+                status=Question.STATUS_APPROVED,
+                is_locked_for_official_exam=False,
+            ).select_related("category")
+        )
+        subject.mock_tsn_count = sum(is_tsn_question(q) for q in questions)
+        subject.mock_other_count = len(questions) - subject.mock_tsn_count
+    return render(
+        request,
+        "start_exam.html",
+        {
+            "subjects": subjects,
+            "question_counts": ALLOWED_MOCK_QUESTION_COUNTS,
+            "default_question_count": DEFAULT_QUESTION_COUNT,
+        },
+    )
 
 
 @login_required

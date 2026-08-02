@@ -1,4 +1,3 @@
-from random import sample
 from uuid import uuid4
 
 from django.db import transaction
@@ -17,7 +16,6 @@ from .api_services import (
     package_download,
     package_metadata,
     parse_since,
-    practice_questions,
     process_sync_operations,
     resolve_question_package,
     serialize_question,
@@ -37,6 +35,12 @@ from .serializers import (
     PracticeAttemptSerializer,
     SubjectSerializer,
     UserSerializer,
+)
+from .question_selection import (
+    ALLOWED_MOCK_QUESTION_COUNTS,
+    QuestionSelectionError,
+    latest_completed_question_ids,
+    select_balanced_mock_questions,
 )
 
 
@@ -113,15 +117,22 @@ class PracticeStartAPIView(APIView):
     def post(self, request):
         subject = get_object_or_404(Subject, pk=request.data.get("subject_id"))
         try:
-            count = min(max(int(request.data.get("question_count", 20)), 1), 100)
+            count = int(request.data.get("question_count", 20))
         except (TypeError, ValueError):
             raise ValidationError({"question_count": "Số câu hỏi không hợp lệ."})
-        pool = list(practice_questions(subject))
-        if len(pool) < count:
+        if count not in ALLOWED_MOCK_QUESTION_COUNTS:
             raise ValidationError(
-                {"question_count": f"Ngân hàng chỉ có {len(pool)} câu hợp lệ."}
+                {"question_count": "Số câu chỉ được chọn 10, 20 hoặc 50."}
             )
-        questions = sample(pool, count)
+        previous_ids = latest_completed_question_ids(request.user, subject)
+        try:
+            questions, distribution = select_balanced_mock_questions(
+                subject,
+                count,
+                excluded_question_ids=previous_ids,
+            )
+        except QuestionSelectionError as exc:
+            raise ValidationError({"question_count": str(exc)}) from exc
         return Response(
             {
                 "local_session_id": f"local-{uuid4()}",
@@ -131,6 +142,7 @@ class PracticeStartAPIView(APIView):
                     "name": subject.name,
                 },
                 "started_at": timezone.now(),
+                "distribution": distribution,
                 "questions": [
                     serialize_question(question) for question in questions
                 ],

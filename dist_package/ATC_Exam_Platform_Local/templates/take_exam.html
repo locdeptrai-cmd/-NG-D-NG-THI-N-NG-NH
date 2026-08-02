@@ -3,7 +3,11 @@
 {% block content %}
 <div class="card">
   <h3>{{ attempt.exam.name }}</h3>
-  <p class="small">Nhóm: {{ attempt.exam.subject.code }} | Số câu: {{ items|length }}</p>
+  <p class="small">
+    Nhóm: {{ attempt.exam.subject.code }} | Số câu: {{ items|length }} |
+    TSN: {{ attempt.exam.matrix_config.tsn_question_count }} |
+    Kiến thức còn lại: {{ attempt.exam.matrix_config.other_question_count }}
+  </p>
   <form method="post" action="{% url 'submit_exam' attempt.id %}">
     {% csrf_token %}
     {% for it in items %}

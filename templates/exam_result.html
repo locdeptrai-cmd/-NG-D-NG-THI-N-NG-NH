@@ -5,6 +5,11 @@
   <h3>Kết quả</h3>
   <p><b>Điểm:</b> {{ attempt.score }}/10</p>
   <p><b>Số câu đúng:</b> {{ correct }}/{{ total }}</p>
+  <p class="small">
+    Cấu trúc đề: {{ attempt.exam.matrix_config.tsn_question_count }} câu TSN và
+    {{ attempt.exam.matrix_config.other_question_count }} câu kiến thức còn lại.
+    Lần làm kế tiếp sẽ không lấy lại các câu trong đề này.
+  </p>
   <p><a class="btn" href="{% url 'start_exam' %}">Làm bài mới</a></p>
 </div>
 
