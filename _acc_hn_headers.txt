@@ -1,0 +1,13 @@
+file=ACC HN.xlsx size=103644
+1 | Loại Kiến Thức || TT || QUESTION || 1 || 2 || 3 || 4 || ANS || Rating ||  ||  ||  ||  ||  || 
+2 |  || 1 || Which appropriate authority shall be approved the establishm || Prime minister. || Ministry of transport. || Ministry of national defense. || Ministry of foreign affairs. || 1 || ACC HAN ||  ||  ||  ||  ||  || 
+3 |  || 2 || When being on duty, which certification shall air traffic co || The validated certificate which is issued or admitted  by th || The validated health certificate. || Both  1 and 2 || 1 or 2. || 3 || ACC HAN ||  ||  ||  ||  ||  || 
+4 |  || 3 || The air traffic service includes:(sourced by VN Civil Aviati || Air traffic control service. || Flight information service. || Air traffic advisory service and alerting service. || All of above. || 4 || ACC HAN ||  ||  ||  ||  ||  || 
+5 |  || 4 || An aircraft operates in a defined airspace shall be controll || An ATC unit. || 2 ATC units, || 3 ATC units, || 4 ATC units || 1 || ACC HAN ||  ||  ||  ||  ||  || 
+6 |  || 5 || Who shall decide the establishment of an enterprise providin || Prime minister. || Minister of transport || Minister of national defense. || ICAO. || 2 || ACC HAN ||  ||  ||  ||  ||  || 
+7 |  || 6 || Enterprise which provides air traffic service must: (sourced || Provide adequate and uninterrupted air traffic service. || Comply with regulations on the management, utilization and d || Coordinate with organizations concerned in handling emergenc || All of above. || 4 || ACC HAN ||  ||  ||  ||  ||  || 
+8 |  || 7 || What is the title of chapter V in law on civil aviation of V || Aircraft. || Aerodrome and airport. || Aviation personal. || Air traffic management || 4 || ACC HAN ||  ||  ||  ||  ||  || 
+9 |  || 8 || Which appropriate authority of viet nam shall grant flight p || Ministry of national defense. || Ministry of foreign affairs || Ministry of transport. || Civil aviation authority of vietnam. || 2 || ACC HAN ||  ||  ||  ||  ||  || 
+10 |  || 9 || Which appropriate authority of vietnam shall grant flight pe || Ministry of national defense . || Ministry of foreign affairs. || Ministry of transport. || Civil aviation authority of vietnam. || 1 || ACC HAN ||  ||  ||  ||  ||  || 
+11 |  || 10 ||  By which appropriate authority of viet nam shall  grant fli || Ministry of national defense. || Ministry of foreign affairs. || Ministry of transport  . || Civil aviation authority of vietnam. || 3 || ACC HAN ||  ||  ||  ||  ||  || 
+12 |  || 11 || Which flight Shall Ministry of national defense issue permis || Vietnamese military flights. || Foreign military flights. || VIP flights. || 1 and 2 || 4 || ACC HAN ||  ||  ||  ||  ||  || 
