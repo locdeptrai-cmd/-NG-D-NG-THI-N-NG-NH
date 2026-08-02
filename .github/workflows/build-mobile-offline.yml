@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "offline/mobile_flutter/**"
-      - "offline/data/offline_exam.db"
+      - "flutter/**"
+      - "dist/offline_exam.db"
       - ".github/workflows/build-mobile-offline.yml"
       - ".github/workflows/build-ios.yml"
 
@@ -30,10 +30,10 @@ jobs:
           cache: true
 
       - name: Sync DB and build APK
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: |
-          if [ -f ../data/offline_exam.db ]; then
-            cp ../data/offline_exam.db assets/offline_exam.db
+          if [ -f ../dist/offline_exam.db ]; then
+            cp ../dist/offline_exam.db assets/offline_exam.db
           fi
           flutter pub get
           flutter build apk --release \
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: atc-offline-android
-          path: offline/dist/ATC_Offline_Mobile_Android.apk
+          path: dist/ATC_Offline_Mobile_Android.apk
           retention-days: 14
 
   ios:
@@ -60,12 +60,12 @@ jobs:
 
       - name: Sync DB
         run: |
-          if [ -f offline/data/offline_exam.db ]; then
-            cp offline/data/offline_exam.db offline/mobile_flutter/assets/offline_exam.db
+          if [ -f dist/offline_exam.db ]; then
+            cp dist/offline_exam.db flutter/assets/offline_exam.db
           fi
 
       - name: Flutter pub get
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: flutter pub get
 
       - name: Detect Apple signing secrets
@@ -81,7 +81,7 @@ jobs:
 
       - name: Build unsigned iOS
         if: steps.signing.outputs.enabled != 'true'
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: |
           flutter build ios --release --no-codesign \
             --dart-define=ATC_API_BASE_URL=https://atc-exam-api.onrender.com/api
@@ -116,7 +116,7 @@ jobs:
 
       - name: Build signed IPA
         if: steps.signing.outputs.enabled == 'true'
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
@@ -148,7 +148,7 @@ jobs:
         with:
           name: atc-offline-ios
           path: |
-            offline/dist/ATC_Offline_Mobile_iOS.ipa
-            offline/dist/ATC_Offline_Mobile_iOS_unsigned_Runner.app.zip
+            dist/ATC_Offline_Mobile_iOS.ipa
+            dist/ATC_Offline_Mobile_iOS_unsigned_Runner.app.zip
           if-no-files-found: warn
           retention-days: 14

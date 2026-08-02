@@ -48,8 +48,8 @@ Workflow `.github/workflows/build-pwa.yml` thực hiện:
 Backend:
 
 ```powershell
-.\.venv\Scripts\python.exe manage.py migrate --settings=config.sqlite_settings
-.\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000 --settings=config.sqlite_settings
+.\.venv\Scripts\python.exe online\manage.py migrate --settings=config.sqlite_settings
+.\.venv\Scripts\python.exe online\manage.py runserver 127.0.0.1:8000 --settings=config.sqlite_settings
 ```
 
 PWA:

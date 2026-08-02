@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "offline/mobile_flutter/**"
+      - "flutter/**"
       - ".github/workflows/build-ios.yml"
 
 permissions:
@@ -27,12 +27,12 @@ jobs:
 
       - name: Sync offline DB into assets
         run: |
-          if [ -f offline/data/offline_exam.db ]; then
-            cp offline/data/offline_exam.db offline/mobile_flutter/assets/offline_exam.db
+          if [ -f dist/offline_exam.db ]; then
+            cp dist/offline_exam.db flutter/assets/offline_exam.db
           fi
 
       - name: Flutter pub get
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: flutter pub get
 
       - name: Detect Apple signing secrets
@@ -48,7 +48,7 @@ jobs:
 
       - name: Build unsigned iOS (compile check)
         if: steps.signing.outputs.enabled != 'true'
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: |
           flutter build ios --release --no-codesign \
             --dart-define=ATC_API_BASE_URL=https://atc-exam-api.onrender.com/api
@@ -87,7 +87,7 @@ jobs:
 
       - name: Build signed IPA
         if: steps.signing.outputs.enabled == 'true'
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
@@ -121,7 +121,7 @@ jobs:
         with:
           name: atc-offline-ios
           path: |
-            offline/dist/ATC_Offline_Mobile_iOS.ipa
-            offline/dist/ATC_Offline_Mobile_iOS_unsigned_Runner.app.zip
+            dist/ATC_Offline_Mobile_iOS.ipa
+            dist/ATC_Offline_Mobile_iOS_unsigned_Runner.app.zip
           if-no-files-found: warn
           retention-days: 14

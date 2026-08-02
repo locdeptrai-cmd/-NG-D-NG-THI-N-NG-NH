@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - "offline/mobile_flutter/**"
+      - "flutter/**"
       - ".github/workflows/build-pwa.yml"
 
 permissions:
@@ -27,39 +27,39 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: flutter pub get
 
       - name: Generate Drift sources
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Download SQLite WebAssembly
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: |
           curl -L --fail \
             https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3.wasm \
             -o web/sqlite3.wasm
 
       - name: Compile Drift web worker
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: dart compile js web/drift_worker.dart -o web/drift_worker.js
 
       - name: Analyze
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: flutter analyze
 
       - name: Test
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: flutter test
 
       - name: Build web
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: flutter build web --release
 
       - name: Upload PWA artifact
         uses: actions/upload-artifact@v4
         with:
           name: atc-exam-pwa
-          path: offline/mobile_flutter/build/web
+          path: flutter/build/web
           retention-days: 14

@@ -1,112 +1,75 @@
-# ATC Exam Platform (Django + SQLite local / PostgreSQL Docker)
+# ATC Exam Platform
 
-## 1) Chay local (khong Docker)
+Monorepo chia 4 phần:
+
+| Thư mục | Vai trò |
+|---------|---------|
+| `online/` | Django API + web thi thử (Render / Docker / local) |
+| `offline-windows/` | App Windows offline (Tkinter + PyInstaller) |
+| `flutter/` | **1 mã nguồn** chạy PWA + Android + iOS |
+| `dist/` | Artifact đã build (exe, apk, ipa, `offline_exam.db`) |
+
+## 1) Online (Django)
 
 ```bash
-python -m venv .venv
-.venv\\Scripts\\activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py setup_local_defaults
-python manage.py runserver
+```powershell
+cd online
+# Dùng Python từ venv ở repo root
+..\.venv\Scripts\python.exe manage.py migrate --settings=config.sqlite_settings
+..\.venv\Scripts\python.exe manage.py setup_local_defaults --settings=config.sqlite_settings
+..\.venv\Scripts\python.exe manage.py runserver --settings=config.sqlite_settings
 ```
 
-Truy cap:
-- Trang chu: http://127.0.0.1:8000/
-- Admin: http://127.0.0.1:8000/admin/
+Hoặc chạy `online/ATC_Exam_Local_Setup_And_Run.bat`.
 
-Ban Windows co the chay truc tiep `ATC_Exam_Local_Setup_And_Run.bat`.
-Lenh `manage.py` mac dinh dung file `dev.sqlite3`; Docker Compose tu dong
-chuyen sang cau hinh PostgreSQL.
+- Trang chủ: http://127.0.0.1:8000/
+- Tài khoản mặc định: `admin` / `endteacher` / `enduser` — mật khẩu `123456`
+- File Excel nguồn: `online/imports/`
 
-## 2) Chay bang Docker
+Docker (từ repo root):
 
 ```bash
 docker compose up --build
 ```
 
-## 3) Import cau hoi CSV/XLSX
+Production: `render.yaml` dùng `rootDir: online` → https://atc-exam-api.onrender.com
 
-Format cot:
-- Ma cau hoi / Mã câu hỏi
-- Noi dung cau hoi / Nội dung câu hỏi
-- A, B, C, D
-- Dap an dung / Đáp án đúng (VD: B hoac AC)
-- Giai thich / Giải thích
-- Chu de / Chủ đề
-- Muc do / Mức độ
-- Tai lieu tham chieu / Tài liệu tham chiếu
-- rating / RATING (khong bat buoc; APS/ADC/ACC HAN/SUP; alias ACC->ACC HAN; SUP co the trung APS/ADC)
+## 2) Windows offline
 
-Lenh:
-```bash
-python manage.py import_questions "10. LTCS TWR GCU TSN.xlsx" --subject ADC
-python manage.py import_questions "sup-bank.xlsx" --subject SUP
-```
-
-## 4) Kien truc chinh
-
-- `exam_bank/models.py`: users/roles/subjects/categories/questions/answers/question_versions/exams/exam_questions/attempts/attempt_answers/documents/audit_logs
-- `exam_bank/admin.py`: quan tri ngan hang cau hoi
-- `exam_bank/services.py`: tao de ngau nhien theo ma tran
-- `exam_bank/management/commands/import_questions.py`: import CSV/XLSX
-
-## 5) Ban offline mobile (Android + iOS)
-
-Mot app Flutter dung chung:
-- `offline/mobile_flutter/`
-- Huong dan: `offline/mobile_flutter/BUILD_MOBILE.md`
-
-Build Android (Windows):
 ```bat
-cd offline\mobile_flutter
-build_android_one_file.bat
+cd offline-windows
+build_exe.bat
 ```
-File: `offline/dist/ATC_Offline_Mobile_Android.apk`
 
-Build iOS + Android tren GitHub Actions:
-- Workflow: **Build Mobile Offline (iOS + Android)**
+Exe: `dist/ATC_Offline_Exam_Windows.exe`
 
-## 6) PWA offline-first
-
-Backend cung cap REST API JWT tai `/api/`:
-- `/api/health/`
-- `/api/auth/login/`, `/api/auth/refresh/`, `/api/auth/me/`
-- `/api/subjects/`, `/api/categories/`
-- `/api/question-packages/` va API download
-- `/api/practice/`, `/api/exams/`, `/api/results/`, `/api/sync/`
-
-Frontend PWA nam tai `offline/mobile_flutter/`, dung Drift de luu SQLite
-native va IndexedDB/OPFS tren Web. Build:
+Dựng lại DB offline từ Django:
 
 ```bash
-cd offline/mobile_flutter
+..\ .venv\Scripts\python.exe online\scripts\build_offline_db.py
+```
+
+## 3) Flutter (PWA + Android + iOS)
+
+Một codebase: `flutter/`
+
+```bash
+cd flutter
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
+flutter test
 flutter build web --release
+flutter build apk --release
 ```
 
-Workflow **Build ATC Exam PWA** se analyze, test, build va tao artifact.
+- PWA GitHub Pages: https://locdeptrai-cmd.github.io/-NG-D-NG-THI-N-NG-NH/
+- Hướng dẫn mobile: `flutter/BUILD_MOBILE.md`, `flutter/BUILD_IOS.md`
 
-## 7) Backend production tren Render
+## 4) `dist/`
 
-File `render.yaml` tao dong bo:
+Chứa sản phẩm đóng gói và `offline_exam.db` (seed cho Windows/Flutter offline).
 
-- Django API tai `https://atc-exam-api.onrender.com`.
-- PostgreSQL tai region Singapore, chi cho phep ket noi noi bo.
-- Secret key ngau nhien, HTTPS, CORS cho GitHub Pages.
-- Import du lieu tu `dev.sqlite3` sang PostgreSQL (lan dau day du; cac lan sau sync ngan hang cau hoi theo nhom lech, gom ACC HAN / SUP ACS HAN).
+## Tài liệu thêm
 
-Tren Render Dashboard, chon **New Blueprint Instance**, ket noi repository nay
-va ap dung `render.yaml`. Sau khi API hoat dong, dat GitHub Actions variable:
-
-```text
-ATC_API_BASE_URL=https://atc-exam-api.onrender.com/api
-```
-
-Roi chay lai workflow **Deploy ATC Exam PWA to GitHub Pages**.
-
-## 8) Luu y
-
-- Bo file cu `app_thi_thu_full.html`, `data.js` de doi chieu du lieu.
-- He thong moi luu cau hoi trong PostgreSQL, khong hard-code vao frontend.
+- `docs/HUONG_DAN_SU_DUNG_CHI_TIET.md`
+- `docs/PWA_IMPLEMENTATION_STATUS.md`

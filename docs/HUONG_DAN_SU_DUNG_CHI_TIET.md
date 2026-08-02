@@ -204,24 +204,24 @@ python manage.py import_questions "10. LTCS TWR GCU TSN.xlsx" --subject ADC --se
 
 ### 9.2. Chay ban Windows offline tu ma nguon
 ```bash
-cd offline/windows
+cd offline-windows
 python offline_exam.py
 ```
 
 Ban nay doc DB offline tai:
-- `offline/data/offline_exam.db`
+- `dist/offline_exam.db`
 
 ### 9.3. Chay ban mobile offline tu ma nguon
 Yeu cau da cai Flutter SDK.
 
 ```bash
-cd offline/mobile_flutter
+cd flutter
 flutter pub get
 flutter run
 ```
 
 Ban mobile doc DB offline tu:
-- `offline/mobile_flutter/assets/offline_exam.db`
+- `flutter/assets/offline_exam.db`
 
 ---
 
@@ -235,13 +235,13 @@ python offline/build_offline_db.py
 ```
 
 DB output:
-- `offline/data/offline_exam.db`
+- `dist/offline_exam.db`
 
 ### 10.2. Dong goi Windows thanh mot file `.exe`
 Chay:
 
 ```bash
-offline/windows/build_exe.bat
+offline-windows/build_exe.bat
 ```
 
 File output:
@@ -253,7 +253,7 @@ File `.exe` nay da nhung san DB, nguoi dung Windows chi can chay dung file nay d
 Yeu cau da cai Flutter SDK va Android toolchain.
 
 ```bash
-cd offline/mobile_flutter
+cd flutter
 build_android_one_file.bat
 ```
 
@@ -272,7 +272,7 @@ Yeu cau bat buoc:
 Tren macOS:
 
 ```bash
-cd offline/mobile_flutter
+cd flutter
 chmod +x build_ios_one_file.sh
 ./build_ios_one_file.sh
 ```

@@ -5,6 +5,7 @@ services:
     plan: free
     region: singapore
     branch: main
+    rootDir: online
     autoDeployTrigger: commit
     buildCommand: ./build.sh
     startCommand: python manage.py migrate --settings=config.settings && ./scripts/render_initial_data.sh && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120

@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - "offline/mobile_flutter/**"
+      - "flutter/**"
       - ".github/workflows/deploy-pwa.yml"
 
 permissions:
@@ -37,34 +37,34 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: flutter pub get
 
       - name: Generate Drift sources
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Download SQLite WebAssembly
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: |
           curl -L --fail \
             https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3.wasm \
             -o web/sqlite3.wasm
 
       - name: Compile Drift web worker
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: dart compile js web/drift_worker.dart -o web/drift_worker.js
 
       - name: Analyze
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: flutter analyze
 
       - name: Test
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         run: flutter test
 
       - name: Build web for GitHub Pages
-        working-directory: offline/mobile_flutter
+        working-directory: flutter
         shell: bash
         run: |
           api_base_url="${ATC_API_BASE_URL:-https://atc-exam-api.onrender.com/api}"
@@ -79,7 +79,7 @@ jobs:
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: offline/mobile_flutter/build/web
+          path: flutter/build/web
 
   deploy:
     environment:
