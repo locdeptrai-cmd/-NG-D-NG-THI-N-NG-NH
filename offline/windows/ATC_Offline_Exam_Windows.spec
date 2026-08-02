@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['offline_exam.py'],
+    ['f:\\app thi thu\\offline\\windows\\offline_exam.py'],
     pathex=[],
     binaries=[],
-    datas=[('..\\data\\offline_exam.db', 'data')],
+    datas=[('f:\\app thi thu\\offline\\data\\offline_exam.db', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

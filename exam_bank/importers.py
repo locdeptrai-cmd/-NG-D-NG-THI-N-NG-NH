@@ -303,8 +303,8 @@ def _extract_from_table_rows(rows, default_subject_code):
         "LOAI KIEN THUC",
         "LOAI KIEN THUC CHUYEN MON",
     )
-    c_tt = col("TT", "STT")
-    c_question = col("QUESTION", "QUESTIONS", "CAU HOI", "CÂU HỎI")
+    c_tt = col("TT", "STT", "TT GOC", "TT GỐC")
+    c_question = col("QUESTION", "QUESTIONS", "CAU HOI", "CÂU HỎI", "CAU HOI")
     # Answer option headers may be A/B/C/D or numeric 1/2/3/4.
     c_a = col("A", "1")
     c_b = col("B", "2")
