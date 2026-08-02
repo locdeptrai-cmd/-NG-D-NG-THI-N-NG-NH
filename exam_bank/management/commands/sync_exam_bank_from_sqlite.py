@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from django.conf import settings
@@ -96,7 +97,10 @@ class Command(BaseCommand):
     def _load_snapshot(self, source_path: Path):
         # Read-only snapshot so source can be the same file as the Django DB.
         uri = source_path.resolve().as_uri() + "?mode=ro"
-        with sqlite3.connect(uri, uri=True) as conn:
+        # sqlite3.Connection's context manager only commits/rolls back; it does
+        # not close the handle.  Close it explicitly so deploy syncs and tests
+        # do not leave the source SQLite file locked on Windows.
+        with closing(sqlite3.connect(uri, uri=True)) as conn:
             conn.row_factory = sqlite3.Row
             counts = {
                 row["code"]: int(row["total"])
