@@ -460,3 +460,64 @@ class SyncExamBankFromSqliteTests(TestCase):
             )
         finally:
             source.unlink(missing_ok=True)
+
+    def test_sync_deletes_orphan_questions_not_in_source(self):
+        subject = Subject.objects.create(code="SUP", name="SUP")
+        category = Category.objects.create(subject=subject, name="General")
+        Question.objects.create(
+            code="SUP-OLD-1",
+            content="Old question?",
+            subject=subject,
+            category=category,
+            status=Question.STATUS_APPROVED,
+        )
+
+        with tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False) as tmp:
+            source = Path(tmp.name)
+
+        try:
+            conn = sqlite3.connect(source)
+            conn.executescript(
+                """
+                CREATE TABLE exam_bank_subject (
+                    id INTEGER PRIMARY KEY, code TEXT, name TEXT
+                );
+                CREATE TABLE exam_bank_document (
+                    id INTEGER PRIMARY KEY, code TEXT, title TEXT,
+                    description TEXT, url TEXT
+                );
+                CREATE TABLE exam_bank_category (
+                    id INTEGER PRIMARY KEY, name TEXT, subject_id INTEGER
+                );
+                CREATE TABLE exam_bank_question (
+                    id INTEGER PRIMARY KEY, code TEXT, content TEXT,
+                    explanation TEXT, question_type TEXT, subject_id INTEGER,
+                    category_id INTEGER, difficulty TEXT, topic TEXT,
+                    position_scope TEXT, status TEXT,
+                    is_locked_for_official_exam INTEGER,
+                    reference_document_id INTEGER
+                );
+                CREATE TABLE exam_bank_answer (
+                    id INTEGER PRIMARY KEY, question_id INTEGER, label TEXT,
+                    content TEXT, is_correct INTEGER, "order" INTEGER
+                );
+                INSERT INTO exam_bank_subject VALUES (1, 'SUP', 'SUP');
+                INSERT INTO exam_bank_category VALUES (1, 'General', 1);
+                INSERT INTO exam_bank_question VALUES (
+                    1, 'SUP-NEW-1', 'New question?', '', 'single', 1, 1,
+                    '', '', '', 'approved', 0, NULL
+                );
+                INSERT INTO exam_bank_answer VALUES
+                    (1, 1, 'A', 'Yes', 1, 1),
+                    (2, 1, 'B', 'No', 0, 2);
+                """
+            )
+            conn.close()
+
+            call_command("sync_exam_bank_from_sqlite", source=str(source))
+
+            self.assertFalse(Question.objects.filter(code="SUP-OLD-1").exists())
+            self.assertTrue(Question.objects.filter(code="SUP-NEW-1").exists())
+            self.assertEqual(Question.objects.filter(subject__code="SUP").count(), 1)
+        finally:
+            source.unlink(missing_ok=True)

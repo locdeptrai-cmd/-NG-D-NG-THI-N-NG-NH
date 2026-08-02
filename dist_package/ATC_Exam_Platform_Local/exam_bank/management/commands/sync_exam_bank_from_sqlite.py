@@ -8,7 +8,16 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from exam_bank.api_services import ensure_question_packages, refresh_package
-from exam_bank.models import SUBJECT_GROUPS, Answer, Category, Document, Question, Subject
+from exam_bank.models import (
+    SUBJECT_GROUPS,
+    Answer,
+    AttemptAnswer,
+    Category,
+    Document,
+    ExamQuestion,
+    Question,
+    Subject,
+)
 
 
 class Command(BaseCommand):
@@ -52,6 +61,7 @@ class Command(BaseCommand):
 
         snapshot = self._load_snapshot(source_path)
         source_counts = snapshot["counts"]
+        source_codes_by_subject = self._source_codes_by_subject(snapshot)
 
         if options["subjects"]:
             target_codes = list(options["subjects"])
@@ -60,11 +70,22 @@ class Command(BaseCommand):
         else:
             target_codes = []
             for code, total in sorted(source_counts.items()):
-                dest_total = Question.objects.filter(subject__code=code).count()
-                if dest_total != total:
+                dest_codes = set(
+                    Question.objects.filter(subject__code=code).values_list(
+                        "code", flat=True
+                    )
+                )
+                source_codes = source_codes_by_subject.get(code, set())
+                dest_total = len(dest_codes)
+                if dest_total != total or dest_codes != source_codes:
                     target_codes.append(code)
                     self.stdout.write(
                         f"Mismatch {code}: dest={dest_total} source={total}"
+                        + (
+                            f" (code-set differs)"
+                            if dest_total == total and dest_codes != source_codes
+                            else ""
+                        )
                     )
 
         if not target_codes:
@@ -84,7 +105,7 @@ class Command(BaseCommand):
                 "Synced exam bank from SQLite: "
                 f"subjects={stats['subjects']}, categories={stats['categories']}, "
                 f"documents={stats['documents']}, questions={stats['questions']}, "
-                f"answers={stats['answers']}"
+                f"answers={stats['answers']}, deleted={stats['deleted_questions']}"
             )
         )
 
@@ -93,6 +114,19 @@ class Command(BaseCommand):
         for package in packages:
             refresh_package(package)
         self.stdout.write(f"Refreshed {len(packages)} question package(s).")
+
+    def _source_codes_by_subject(self, snapshot):
+        subject_id_to_code = {
+            row["id"]: row["code"] for row in snapshot["subjects"]
+        }
+        codes_by_subject = {}
+        for row in snapshot["questions"]:
+            subject_code = subject_id_to_code.get(row["subject_id"])
+            question_code = row.get("code")
+            if not subject_code or not question_code:
+                continue
+            codes_by_subject.setdefault(subject_code, set()).add(question_code)
+        return codes_by_subject
 
     def _load_snapshot(self, source_path: Path):
         # Read-only snapshot so source can be the same file as the Django DB.
@@ -180,6 +214,7 @@ class Command(BaseCommand):
             "documents": 0,
             "questions": 0,
             "answers": 0,
+            "deleted_questions": 0,
         }
         target_set = set(target_codes)
         subject_id_map = {}
@@ -282,5 +317,18 @@ class Command(BaseCommand):
                 stats["answers"] += 1
             if keep_labels:
                 question.answers.exclude(label__in=keep_labels).delete()
+
+        # Replace semantics: drop destination questions that are not in the
+        # source snapshot (e.g. old SUP codes left behind after a full reimport).
+        keep_codes = {row["code"] for row in question_rows if row.get("code")}
+        orphan_qs = Question.objects.filter(subject__code__in=target_set).exclude(
+            code__in=keep_codes
+        )
+        orphan_ids = list(orphan_qs.values_list("id", flat=True))
+        if orphan_ids:
+            AttemptAnswer.objects.filter(question_id__in=orphan_ids).delete()
+            ExamQuestion.objects.filter(question_id__in=orphan_ids).delete()
+            deleted_count, _ = Question.objects.filter(id__in=orphan_ids).delete()
+            stats["deleted_questions"] = deleted_count
 
         return stats
