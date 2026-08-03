@@ -171,7 +171,11 @@ class PwaApiTests(APITestCase):
         self.login()
         packages = self.client.get(reverse("api_question_packages"))
         self.assertEqual(packages.status_code, 200)
-        package = packages.data[0]
+        package = next(
+            item
+            for item in packages.data
+            if item["subject"]["code"] == self.subject.code
+        )
         self.assertTrue(package["checksum"].startswith("sha256:"))
 
         download = self.client.get(

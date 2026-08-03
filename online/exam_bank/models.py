@@ -17,7 +17,14 @@ class User(AbstractUser):
 
 
 # Nhóm đề thi / năng định / duyệt dùng chung trong toàn hệ thống.
-SUBJECT_GROUPS = ("APS", "ADC", "ACC HAN", "SUP", "SUP ACS HAN")
+SUBJECT_GROUPS = (
+    "APS",
+    "ADC",
+    "ACC HAN",
+    "SUP",
+    "SUP ACS HAN",
+    "ACS SUP HCM",
+)
 
 
 class Subject(models.Model):

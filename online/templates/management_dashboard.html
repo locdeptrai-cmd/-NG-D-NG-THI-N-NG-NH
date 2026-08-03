@@ -34,8 +34,8 @@
   <h3>Form import theo mẫu file đề thi</h3>
   <p class="small">
     Hệ thống tự phân loại kiến thức khi import. Cột <b>rating</b> không bắt buộc;
-    nếu có APS/ADC/ACC HAN/SUP/SUP ACS HAN thì câu hỏi được đổ vào đúng nhóm đó. SUP có thể trùng APS/ADC
-    (ví dụ <code>SUP,APS</code>, <code>ADC/SUP</code>, <code>ACC HAN</code>, <code>SUP ACS HAN</code>) — cùng nội dung được lưu riêng theo từng nhóm.
+    nếu có APS/ADC/ACC HAN/SUP/SUP ACS HAN/ACS SUP HCM thì câu hỏi được đổ vào đúng nhóm đó. SUP có thể trùng APS/ADC
+    (ví dụ <code>SUP,APS</code>, <code>ADC/SUP</code>, <code>ACC HAN</code>, <code>SUP ACS HAN</code>, <code>ACS SUP HCM</code>) — cùng nội dung được lưu riêng theo từng nhóm.
   </p>
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}

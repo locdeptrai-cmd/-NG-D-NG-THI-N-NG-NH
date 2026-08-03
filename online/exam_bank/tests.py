@@ -244,6 +244,17 @@ class XlsxImportTests(TestCase):
             ["SUP ACS HAN"],
         )
 
+    def test_rating_acs_sup_hcm_maps_to_dedicated_group(self):
+        self.assertIn("ACS SUP HCM", SUBJECT_GROUPS)
+        self.assertEqual(_parse_rating_values("ACS SUP HCM"), ["ACS SUP HCM"])
+        self.assertEqual(_parse_rating_values("ACS SUP HCM·"), ["ACS SUP HCM"])
+        self.assertEqual(
+            _resolve_subject_targets(
+                Path("NHCH KT ACC CHUẨN.xlsx"), ["ACS SUP HCM"], True
+            ),
+            ["ACS SUP HCM"],
+        )
+
     def test_rating_acc_han_maps_to_acc_han_subject_group(self):
         import tempfile
 
