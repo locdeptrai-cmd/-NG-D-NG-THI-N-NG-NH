@@ -9,6 +9,10 @@ from django.core.management.base import BaseCommand, CommandError
 from exam_bank.models import SUBJECT_GROUPS, Role, Subject, User
 
 
+LEGACY_DEFAULT_USERNAMES = ("admin", "endteacher", "enduser")
+LEGACY_WEAK_PASSWORDS = ("123456", "admin123456")
+
+
 class Command(BaseCommand):
     help = (
         "Create roles, subjects, groups and permissions. Demo users are only "
@@ -61,7 +65,7 @@ class Command(BaseCommand):
             password = options["password"] or os.getenv("ATC_BOOTSTRAP_PASSWORD")
             missing_password = any(
                 not User.objects.filter(username=username).exists()
-                for username in ("admin", "endteacher", "enduser")
+                for username in LEGACY_DEFAULT_USERNAMES
             )
             if missing_password and not password:
                 raise CommandError(
@@ -93,6 +97,15 @@ class Command(BaseCommand):
                 is_superuser=False,
             )
             self.stdout.write("Accounts ready: admin / endteacher / enduser")
+        elif not settings.DEBUG:
+            disabled = self._disable_legacy_weak_users()
+            if disabled:
+                self.stdout.write(
+                    self.style.WARNING(
+                        "Disabled legacy users with unchanged weak passwords: "
+                        + ", ".join(disabled)
+                    )
+                )
 
         environment = "development" if settings.DEBUG else "production"
         self.stdout.write(self.style.SUCCESS(f"System defaults are ready ({environment})."))
@@ -108,3 +121,15 @@ class Command(BaseCommand):
         user.role = role
         user.save()
         return user
+
+    @staticmethod
+    def _disable_legacy_weak_users():
+        disabled = []
+        for user in User.objects.filter(username__in=LEGACY_DEFAULT_USERNAMES):
+            if not any(user.check_password(password) for password in LEGACY_WEAK_PASSWORDS):
+                continue
+            user.set_unusable_password()
+            user.is_active = False
+            user.save(update_fields=["password", "is_active"])
+            disabled.append(user.username)
+        return sorted(disabled)

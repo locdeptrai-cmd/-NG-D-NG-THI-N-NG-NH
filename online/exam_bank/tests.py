@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from datetime import timedelta
 
@@ -457,6 +457,22 @@ class SetupLocalDefaultsTests(TestCase):
                 "Local-ATC-Exam-2026!"
             )
         )
+
+    @override_settings(DEBUG=False)
+    def test_production_disables_only_unchanged_legacy_weak_accounts(self):
+        weak_user = User.objects.create_user(username="enduser", password="123456")
+        strong_user = User.objects.create_user(
+            username="endteacher", password="Changed-ATC-Exam-2026!"
+        )
+
+        call_command("setup_local_defaults")
+
+        weak_user.refresh_from_db()
+        strong_user.refresh_from_db()
+        self.assertFalse(weak_user.is_active)
+        self.assertFalse(weak_user.has_usable_password())
+        self.assertTrue(strong_user.is_active)
+        self.assertTrue(strong_user.check_password("Changed-ATC-Exam-2026!"))
 
 
 class SyncExamBankFromSqliteTests(TestCase):
