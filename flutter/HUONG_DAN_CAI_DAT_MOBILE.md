@@ -78,7 +78,7 @@ build_android_one_file.bat
 ```
 
 File output:
-- `offline/dist/ATC_Offline_Mobile_Android.apk`
+- `dist/ATC_Offline_Mobile_Android.apk`
 
 Nguoi dung Android chi can cai file `.apk` nay.
 
@@ -97,7 +97,7 @@ chmod +x build_ios_one_file.sh
 ```
 
 File output:
-- `offline/dist/ATC_Offline_Mobile_iOS.ipa`
+- `dist/ATC_Offline_Mobile_iOS.ipa`
 
 Luu y bat buoc cua iOS:
 - Phai build tren macOS
@@ -122,12 +122,12 @@ Khi DB web thay doi, cap nhat theo quy trinh:
 1. Tao lai DB offline:
 ```bash
 cd d:\app thi thu
-python offline/build_offline_db.py
+python online/scripts/build_offline_db.py
 ```
 
 2. Copy DB moi vao mobile assets:
 ```bash
-copy offline\data\offline_exam.db flutter\assets\offline_exam.db
+copy dist\offline_exam.db flutter\assets\offline_exam.db
 ```
 
 3. Chay lai:

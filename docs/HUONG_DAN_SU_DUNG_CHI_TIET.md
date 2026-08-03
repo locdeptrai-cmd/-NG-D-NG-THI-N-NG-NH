@@ -35,8 +35,8 @@ Dieu huong:
 - `enduser`
 - Quyen: vao lam bai thi, xem ket qua
 
-Mat khau mac dinh hien tai:
-- `123456` (khuyen nghi doi ngay sau ban giao)
+He thong khong cung cap mat khau mac dinh. Khi khoi tao local, nguoi quan tri
+phai dat mat khau manh qua bien `ATC_BOOTSTRAP_PASSWORD`.
 
 ---
 
@@ -62,12 +62,12 @@ role_user = Role.objects.get(code='enduser')
 role_teacher = Role.objects.get(code='endteacher')
 g = Group.objects.get(name='question_teachers')
 
-u = User.objects.create_user(username='hocvien01', password='123456')
+u = User.objects.create_user(username='hocvien01', password='MAT_KHAU_MANH_RIENG')
 u.role = role_user
 u.is_staff = False
 u.save()
 
-t = User.objects.create_user(username='giaovien01', password='123456')
+t = User.objects.create_user(username='giaovien01', password='MAT_KHAU_MANH_RIENG')
 t.role = role_teacher
 t.is_staff = True
 t.save()
@@ -231,7 +231,7 @@ Ban mobile doc DB offline tu:
 Khi ngan hang cau hoi web thay doi, tao lai DB offline:
 
 ```bash
-python offline/build_offline_db.py
+python online/scripts/build_offline_db.py
 ```
 
 DB output:
@@ -245,7 +245,7 @@ offline-windows/build_exe.bat
 ```
 
 File output:
-- `offline/dist/ATC_Offline_Exam_Windows.exe`
+- `dist/ATC_Offline_Exam_Windows.exe`
 
 File `.exe` nay da nhung san DB, nguoi dung Windows chi can chay dung file nay de su dung, khong can mo web va khong can cai database rieng.
 
@@ -258,7 +258,7 @@ build_android_one_file.bat
 ```
 
 File output:
-- `offline/dist/ATC_Offline_Mobile_Android.apk`
+- `dist/ATC_Offline_Mobile_Android.apk`
 
 Nguoi dung Android cai truc tiep file `.apk` nay.
 
@@ -278,7 +278,7 @@ chmod +x build_ios_one_file.sh
 ```
 
 File output:
-- `offline/dist/ATC_Offline_Mobile_iOS.ipa`
+- `dist/ATC_Offline_Mobile_iOS.ipa`
 
 Luu y: iOS khong cho cai app hop le neu khong co signing cua Apple. Do do file `.ipa` phai duoc build tren macOS voi cau hinh signing dung.
 

@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions EnableDelayedExpansion
+setlocal EnableExtensions DisableDelayedExpansion
 
 title ATC Exam Platform - Local Setup and Run
 cd /d "%~dp0"
@@ -94,13 +94,26 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
-echo [5/7] Tao cau hinh local va tai khoan mac dinh neu thieu...
+echo [5/7] Tao cau hinh local...
 "%VENV_PY%" manage.py setup_local_defaults --settings=config.sqlite_settings
 if %ERRORLEVEL% NEQ 0 (
     echo [LOI] Tao cau hinh local that bai.
     pause
     exit /b 1
 )
+
+echo.
+echo Dat mat khau khoi tao cho admin / endteacher / enduser.
+echo Mat khau phai co it nhat 8 ky tu va khong duoc qua pho bien.
+set /p "ATC_BOOTSTRAP_PASSWORD=Mat khau khoi tao: "
+"%VENV_PY%" manage.py setup_local_defaults --create-users --settings=config.sqlite_settings
+if %ERRORLEVEL% NEQ 0 (
+    set "ATC_BOOTSTRAP_PASSWORD="
+    echo [LOI] Khong tao duoc tai khoan local.
+    pause
+    exit /b 1
+)
+set "ATC_BOOTSTRAP_PASSWORD="
 
 echo.
 echo [6/7] Kiem tra he thong...
@@ -120,7 +133,7 @@ echo ============================================================
 echo  San sang.
 echo  URL dang nhap: http://127.0.0.1:8000/login/
 echo  Tai khoan: admin / endteacher / enduser
-echo  Mat khau mac dinh: 123456
+echo  Mat khau: gia tri ban vua nhap o buoc 5
 echo.
 echo  Nhan Ctrl+C de dung server.
 echo ============================================================

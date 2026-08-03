@@ -19,6 +19,6 @@ Kết quả: `dist/ATC_Offline_Exam_Windows.exe` (đã nhúng DB).
 ## Cập nhật ngân hàng câu hỏi
 
 ```bash
-..\ .venv\Scripts\python.exe ..\online\scripts\build_offline_db.py
+..\.venv\Scripts\python.exe ..\online\scripts\build_offline_db.py
 build_exe.bat
 ```
