@@ -24,7 +24,7 @@ EXCEL_DB_MAP = [
     ("ANS", "correct answer (A-D or 1-4)"),
     (
         "rating / RATING",
-        "subject group(s) APS/ADC/ACC HAN/SUP/SUP ACS HAN (optional; multi allowed e.g. SUP,APS)",
+        "subject group(s) APS/ADC/ACC HAN/SUP/SUP ACS HAN/ACS SUP HCM (optional; multi allowed e.g. SUP,APS)",
     ),
 ]
 
@@ -138,6 +138,10 @@ def _canonical_rating_token(token):
         "SUPACSHAN": "SUP ACS HAN",
         "SUP_ACS_HAN": "SUP ACS HAN",
         "SUP ACS": "SUP ACS HAN",
+        "ACS SUP HCM": "ACS SUP HCM",
+        "ACSSUPHCM": "ACS SUP HCM",
+        "ACS_SUP_HCM": "ACS SUP HCM",
+        "ACS SUP HCM·": "ACS SUP HCM",
     }
     if token in aliases and aliases[token] in SUBJECT_GROUPS:
         return aliases[token]
@@ -152,11 +156,11 @@ def _canonical_rating_token(token):
 
 
 def _parse_rating_values(value):
-    """Parse one or many ratings from a cell (APS, ADC, ACC HAN, SUP, SUP ACS HAN).
+    """Parse one or many supported ratings from a cell.
 
     SUP questions may also belong to APS and/or ADC, so values like
     ``SUP,APS``, ``ADC/SUP``, or ``APS ADC SUP`` are supported.
-    ``ACC HAN`` / ``SUP ACS HAN`` are dedicated banks (keep multi-word intact).
+    ``ACC HAN`` / ``SUP ACS HAN`` / ``ACS SUP HCM`` are dedicated banks.
     """
     text = _normalize(value).upper()
     if not text:
@@ -209,7 +213,7 @@ def _resolve_subject_targets(path: Path, subject_codes, rating_explicit: bool):
     """Route each question to subject DB(s).
 
     Priority:
-    1) Explicit rating cell(s) in file (APS/ADC/ACC HAN/SUP/SUP ACS HAN; multi allowed)
+    1) Explicit rating cell(s) in file (all SUBJECT_GROUPS; multi allowed)
     2) Form/default group chosen at import time
     3) Legacy filename heuristics (only when form group is APS/ADC)
     """
@@ -219,7 +223,7 @@ def _resolve_subject_targets(path: Path, subject_codes, rating_explicit: bool):
         codes = [c for c in (subject_codes or []) if c in SUBJECT_GROUPS]
 
     order = {code: i for i, code in enumerate(SUBJECT_GROUPS)}
-    dedicated = {"SUP", "ACC HAN", "SUP ACS HAN"}
+    dedicated = {"SUP", "ACC HAN", "SUP ACS HAN", "ACS SUP HCM"}
 
     if rating_explicit and codes:
         return sorted(dict.fromkeys(codes), key=lambda c: order.get(c, 99))
@@ -232,6 +236,10 @@ def _resolve_subject_targets(path: Path, subject_codes, rating_explicit: bool):
         return sorted(dict.fromkeys(codes), key=lambda c: order.get(c, 99))
 
     tokens = _source_tokens(path)
+    if "ACSSUPHCM" in "".join(tokens) or (
+        "ACS" in tokens and "SUP" in tokens and "HCM" in tokens
+    ):
+        return ["ACS SUP HCM"]
     if "SUPACS" in "".join(tokens) or (
         "SUP" in tokens and "ACS" in tokens and "HAN" in tokens
     ):

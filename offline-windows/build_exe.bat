@@ -34,7 +34,7 @@ if errorlevel 1 (
   --name ATC_Offline_Exam_Windows ^
   --distpath "%REPO_ROOT%\dist" ^
   --workpath "%~dp0build" ^
-  --specpath "%~dp0" ^
+  --specpath "%~dp0." ^
   --add-data "%DB_PATH%;." ^
   "%~dp0offline_exam.py"
 if errorlevel 1 (

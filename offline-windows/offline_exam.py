@@ -240,7 +240,14 @@ class OfflineExamApp(tk.Tk):
         frm = tk.Frame(self.container, bg="#0a2a66")
         frm.pack(pady=8)
         tk.Label(frm, text="Chọn nhóm đề:", bg="#0a2a66", fg="white", font=("Arial", 14)).pack(side="left", padx=8)
-        for code in ("APS", "ADC", "ACC HAN", "SUP", "SUP ACS HAN"):
+        for code in (
+            "APS",
+            "ADC",
+            "ACC HAN",
+            "SUP",
+            "SUP ACS HAN",
+            "ACS SUP HCM",
+        ):
             tk.Radiobutton(
                 frm,
                 text=code,

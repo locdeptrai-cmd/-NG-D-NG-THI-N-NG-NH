@@ -3,7 +3,7 @@
 Một codebase Flutter dùng chung cho cả hai nền tảng:
 
 - Thư mục app: `flutter`
-- DB nhúng offline: `assets/offline_exam.db` (APS / ADC / ACC HAN / SUP / SUP ACS HAN)
+- DB nhúng offline: `assets/offline_exam.db` (APS / ADC / ACC HAN / SUP / SUP ACS HAN / ACS SUP HCM)
 - UI: chọn nhóm đề → thi 50 câu → chấm điểm
 
 ## File cài đặt
