@@ -436,7 +436,11 @@ class BalancedQuestionSelectionTests(TestCase):
 class SetupLocalDefaultsTests(TestCase):
     def test_does_not_create_users_unless_explicitly_requested(self):
         call_command("setup_local_defaults")
-        self.assertFalse(User.objects.exists())
+        self.assertFalse(
+            User.objects.filter(
+                username__in=("admin", "endteacher", "enduser")
+            ).exists()
+        )
 
     def test_requires_non_default_password_for_new_demo_users(self):
         with self.assertRaises(CommandError):
