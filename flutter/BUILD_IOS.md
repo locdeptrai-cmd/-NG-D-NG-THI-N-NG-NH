@@ -52,7 +52,7 @@ Bundle ID hiện tại: `com.atc.offline.atcOfflineMobile`
 ### 2) Cập nhật DB mới nhất (nếu cần)
 ```bash
 cd "/path/to/app thi thu"
-python3 offline/build_offline_db.py
+python3 online/scripts/build_offline_db.py
 cp dist/offline_exam.db flutter/assets/offline_exam.db
 ```
 
@@ -64,7 +64,7 @@ chmod +x build_ios_one_file.sh
 ```
 
 Output:
-- `offline/dist/ATC_Offline_Mobile_iOS.ipa`
+- `dist/ATC_Offline_Mobile_iOS.ipa`
 
 ### 4) Ký app trong Xcode (nếu script báo thiếu signing)
 ```bash

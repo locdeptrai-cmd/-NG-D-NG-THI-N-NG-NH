@@ -3,8 +3,10 @@ name: Build iOS Offline App
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - "flutter/**"
+      - "dist/offline_exam.db"
       - ".github/workflows/build-ios.yml"
 
 permissions:

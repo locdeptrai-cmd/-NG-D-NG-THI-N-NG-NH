@@ -36,7 +36,11 @@ if errorlevel 1 (
   --workpath "%~dp0build" ^
   --specpath "%~dp0" ^
   --add-data "%DB_PATH%;." ^
-  offline_exam.py
+  "%~dp0offline_exam.py"
+if errorlevel 1 (
+  echo Failed to build Windows executable.
+  exit /b 1
+)
 
 echo.
 echo Da dong goi xong: %REPO_ROOT%\dist\ATC_Offline_Exam_Windows.exe

@@ -24,7 +24,7 @@ echo.
 echo Android OK: ..\dist\ATC_Offline_Mobile_Android.apk
 echo.
 echo iOS: tren Windows khong build duoc .ipa.
-echo   - Dung GitHub Actions: Build Mobile Offline (iOS + Android)
+echo   - Dung GitHub Actions: Build iOS Offline App
 echo   - Hoac Mac: build_ios_one_file.sh
 echo Chi tiet: BUILD_MOBILE.md
 endlocal

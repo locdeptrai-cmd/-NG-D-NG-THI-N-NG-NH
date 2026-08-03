@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase
 from django.urls import reverse
 from datetime import timedelta
@@ -24,6 +25,7 @@ from .models import (
     SUBJECT_GROUPS,
     Answer,
     Attempt,
+    AttemptAnswer,
     Category,
     Exam,
     ExamQuestion,
@@ -31,6 +33,7 @@ from .models import (
     Subject,
     User,
 )
+from .question_lifecycle import ARCHIVED_CODE_PREFIX
 from .question_selection import (
     is_tsn_question,
     RECENT_EXAM_EXCLUSION_LIMIT,
@@ -70,7 +73,6 @@ class XlsxImportTests(TestCase):
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["question"], "Question?")
         self.assertEqual(Workbook.active.iter_kwargs["max_row"], 2)
-
     def test_rating_sup_maps_to_sup_subject_group(self):
         class Worksheet:
             max_row = 2
@@ -431,6 +433,32 @@ class BalancedQuestionSelectionTests(TestCase):
         self.assertEqual(new_attempt.exam.matrix_config["tsn_question_count"], 4)
 
 
+class SetupLocalDefaultsTests(TestCase):
+    def test_does_not_create_users_unless_explicitly_requested(self):
+        call_command("setup_local_defaults")
+        self.assertFalse(User.objects.exists())
+
+    def test_requires_non_default_password_for_new_demo_users(self):
+        with self.assertRaises(CommandError):
+            call_command("setup_local_defaults", create_users=True)
+        with self.assertRaises(CommandError):
+            call_command(
+                "setup_local_defaults", create_users=True, password="123456"
+            )
+
+        call_command(
+            "setup_local_defaults",
+            create_users=True,
+            password="Local-ATC-Exam-2026!",
+        )
+        self.assertTrue(User.objects.get(username="admin").is_superuser)
+        self.assertTrue(
+            User.objects.get(username="enduser").check_password(
+                "Local-ATC-Exam-2026!"
+            )
+        )
+
+
 class SyncExamBankFromSqliteTests(TestCase):
     def test_syncs_missing_acc_han_subject_questions(self):
         Subject.objects.create(code="ACC HAN", name="ACC HAN")
@@ -489,6 +517,84 @@ class SyncExamBankFromSqliteTests(TestCase):
         finally:
             source.unlink(missing_ok=True)
 
+    def test_sync_archives_orphan_question_used_by_submitted_attempt(self):
+        subject = Subject.objects.create(code="SUP", name="SUP")
+        category = Category.objects.create(subject=subject, name="General")
+        old_question = Question.objects.create(
+            code="SUP-OLD-HISTORY",
+            content="Historical question?",
+            subject=subject,
+            category=category,
+            status=Question.STATUS_APPROVED,
+        )
+        old_answer = Answer.objects.create(
+            question=old_question,
+            label="A",
+            content="Historical answer",
+            is_correct=True,
+            order=1,
+        )
+        user = User.objects.create_user(username="history-user", password="Test-pass-2026!")
+        exam = Exam.objects.create(name="Historical exam", subject=subject)
+        ExamQuestion.objects.create(exam=exam, question=old_question, order=1)
+        attempt = Attempt.objects.create(
+            exam=exam, user=user, status=Attempt.STATUS_SUBMITTED
+        )
+        attempt_answer = AttemptAnswer.objects.create(
+            attempt=attempt, question=old_question, is_correct=True
+        )
+        attempt_answer.selected_answers.add(old_answer)
+
+        with tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False) as tmp:
+            source = Path(tmp.name)
+        try:
+            conn = sqlite3.connect(source)
+            conn.executescript(
+                """
+                CREATE TABLE exam_bank_subject (id INTEGER PRIMARY KEY, code TEXT, name TEXT);
+                CREATE TABLE exam_bank_document (id INTEGER PRIMARY KEY, code TEXT, title TEXT, description TEXT, url TEXT);
+                CREATE TABLE exam_bank_category (id INTEGER PRIMARY KEY, name TEXT, subject_id INTEGER);
+                CREATE TABLE exam_bank_question (
+                    id INTEGER PRIMARY KEY, code TEXT, content TEXT, explanation TEXT,
+                    question_type TEXT, subject_id INTEGER, category_id INTEGER,
+                    difficulty TEXT, topic TEXT, position_scope TEXT, status TEXT,
+                    is_locked_for_official_exam INTEGER, reference_document_id INTEGER
+                );
+                CREATE TABLE exam_bank_answer (
+                    id INTEGER PRIMARY KEY, question_id INTEGER, label TEXT,
+                    content TEXT, is_correct INTEGER, "order" INTEGER
+                );
+                INSERT INTO exam_bank_subject VALUES (1, 'SUP', 'SUP');
+                INSERT INTO exam_bank_category VALUES (1, 'General', 1);
+                INSERT INTO exam_bank_question VALUES (
+                    1, 'SUP-NEW-HISTORY', 'Current question?', '', 'single', 1, 1,
+                    '', '', '', 'approved', 0, NULL
+                );
+                INSERT INTO exam_bank_answer VALUES
+                    (1, 1, 'A', 'Yes', 1, 1),
+                    (2, 1, 'B', 'No', 0, 2);
+                """
+            )
+            conn.close()
+
+            call_command("sync_exam_bank_from_sqlite", source=str(source))
+
+            old_question.refresh_from_db()
+            self.assertTrue(old_question.code.startswith(ARCHIVED_CODE_PREFIX))
+            self.assertEqual(old_question.status, Question.STATUS_LOCKED)
+            self.assertEqual(
+                attempt.attempt_answers.get().question_id, old_question.id
+            )
+            self.assertEqual(exam.exam_questions.get().question_id, old_question.id)
+            self.assertTrue(
+                Question.objects.filter(code="SUP-NEW-HISTORY").exists()
+            )
+            archived_code = old_question.code
+            call_command("sync_exam_bank_from_sqlite", source=str(source))
+            old_question.refresh_from_db()
+            self.assertEqual(old_question.code, archived_code)
+        finally:
+            source.unlink(missing_ok=True)
     def test_sync_deletes_orphan_questions_not_in_source(self):
         subject = Subject.objects.create(code="SUP", name="SUP")
         category = Category.objects.create(subject=subject, name="General")
@@ -549,3 +655,34 @@ class SyncExamBankFromSqliteTests(TestCase):
             self.assertEqual(Question.objects.filter(subject__code="SUP").count(), 1)
         finally:
             source.unlink(missing_ok=True)
+
+
+class CleanExamBankTests(TestCase):
+    def test_removes_exact_duplicate_and_reclassifies_placeholder(self):
+        subject = Subject.objects.create(code="APS", name="APS")
+        placeholder = Category.objects.create(
+            subject=subject, name="Nội dung câu hỏi (*)"
+        )
+        for code in ("APS-DUP-1", "APS-DUP-2"):
+            question = Question.objects.create(
+                code=code,
+                content="What is the runway visibility?",
+                subject=subject,
+                category=placeholder,
+                status=Question.STATUS_APPROVED,
+            )
+            Answer.objects.create(
+                question=question, label="A", content="One", is_correct=True, order=1
+            )
+            Answer.objects.create(
+                question=question, label="B", content="Two", is_correct=False, order=2
+            )
+
+        call_command("clean_exam_bank", apply=True)
+
+        self.assertEqual(Question.objects.filter(subject=subject).count(), 1)
+        question = Question.objects.get(subject=subject)
+        self.assertEqual(question.category.name, "Meteorology")
+        self.assertFalse(
+            Category.objects.filter(name="Nội dung câu hỏi (*)").exists()
+        )

@@ -142,9 +142,8 @@ ATC_EXAM/
 │   ├── urls.py
 │   └── wsgi.py
 │
-├── offline/
-│   └── mobile_flutter/
-│       ├── lib/
+├── flutter/
+│   ├── lib/
 │       │   ├── core/
 │       │   │   ├── api/
 │       │   │   ├── database/

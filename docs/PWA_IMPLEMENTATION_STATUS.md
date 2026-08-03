@@ -55,7 +55,7 @@ Backend:
 PWA:
 
 ```powershell
-cd offline\mobile_flutter
+cd flutter
 flutter pub get
 dart run build_runner build
 flutter build web --release --dart-define=ATC_API_BASE_URL=http://127.0.0.1:8000/api

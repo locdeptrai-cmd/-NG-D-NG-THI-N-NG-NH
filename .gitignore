@@ -15,6 +15,12 @@ wheels/
 /login-bg2.png
 /home-bg.png
 dist_package/
+dist/*.apk
+dist/*.exe
+dist/*.ipa
+dist/*.zip
+dist/questions.json
+flutter/assets/questions.json
 
 flutter/.dart_tool/
 flutter/.flutter-plugins-dependencies

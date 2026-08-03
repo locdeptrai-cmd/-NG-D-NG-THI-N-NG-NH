@@ -50,7 +50,8 @@ Trên Windows:
 build_mobile_offline.bat
 ```
 
-GitHub Actions: chạy workflow **Build Mobile Offline (iOS + Android)**.
+GitHub Actions: dùng **Build Android Offline** cho APK và
+**Build iOS Offline App** cho gói iOS.
 
 ## API và dữ liệu
 
@@ -62,8 +63,8 @@ GET /api/question-packages/{package_id}/download/
 POST /api/sync/
 ```
 
-File `assets/questions.json` chỉ được giữ để đối chiếu dữ liệu cũ; runtime PWA
-không nạp toàn bộ ngân hàng vào service worker.
+Database nhúng duy nhất là `assets/offline_exam.db`; không duy trì thêm bản
+JSON song song để tránh lệch dữ liệu.
 
 ## Kiểm tra
 

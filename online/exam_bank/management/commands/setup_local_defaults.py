@@ -1,14 +1,34 @@
+import os
+
+from django.conf import settings
 from django.contrib.auth.models import Group, Permission
-from django.core.management.base import BaseCommand
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.core.management.base import BaseCommand, CommandError
 
 from exam_bank.models import SUBJECT_GROUPS, Role, Subject, User
 
 
-DEFAULT_PASSWORD = "123456"
-
-
 class Command(BaseCommand):
-    help = "Create local default roles, subjects, groups, permissions, and users"
+    help = (
+        "Create roles, subjects, groups and permissions. Demo users are only "
+        "created when --create-users is explicitly supplied."
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--create-users",
+            action="store_true",
+            help="Create admin/endteacher/enduser when they do not exist",
+        )
+        parser.add_argument(
+            "--password",
+            default=None,
+            help=(
+                "Initial password for newly created demo users. Prefer the "
+                "ATC_BOOTSTRAP_PASSWORD environment variable."
+            ),
+        )
 
     def handle(self, *args, **options):
         role_user, _ = Role.objects.get_or_create(
@@ -37,34 +57,54 @@ class Command(BaseCommand):
         )
         teacher_group.permissions.set(teacher_perms)
 
-        admin, created = User.objects.get_or_create(username="admin", defaults={"role": role_teacher})
-        if created or not admin.has_usable_password():
-            admin.set_password(DEFAULT_PASSWORD)
-        admin.is_staff = True
-        admin.is_superuser = True
-        admin.is_active = True
-        admin.role = role_teacher
-        admin.save()
+        if options["create_users"]:
+            password = options["password"] or os.getenv("ATC_BOOTSTRAP_PASSWORD")
+            missing_password = any(
+                not User.objects.filter(username=username).exists()
+                for username in ("admin", "endteacher", "enduser")
+            )
+            if missing_password and not password:
+                raise CommandError(
+                    "ATC_BOOTSTRAP_PASSWORD or --password is required when "
+                    "creating users. No default password is provided."
+                )
+            if password:
+                try:
+                    validate_password(password)
+                except ValidationError as exc:
+                    raise CommandError("; ".join(exc.messages)) from exc
 
-        teacher, created = User.objects.get_or_create(username="endteacher", defaults={"role": role_teacher})
-        if created or not teacher.has_usable_password():
-            teacher.set_password(DEFAULT_PASSWORD)
-        teacher.is_staff = True
-        teacher.is_superuser = False
-        teacher.is_active = True
-        teacher.role = role_teacher
-        teacher.save()
-        teacher.groups.add(teacher_group)
+            admin = self._ensure_user(
+                "admin", password, role_teacher, is_staff=True, is_superuser=True
+            )
+            teacher = self._ensure_user(
+                "endteacher",
+                password,
+                role_teacher,
+                is_staff=True,
+                is_superuser=False,
+            )
+            teacher.groups.add(teacher_group)
+            self._ensure_user(
+                "enduser",
+                password,
+                role_user,
+                is_staff=False,
+                is_superuser=False,
+            )
+            self.stdout.write("Accounts ready: admin / endteacher / enduser")
 
-        student, created = User.objects.get_or_create(username="enduser", defaults={"role": role_user})
-        if created or not student.has_usable_password():
-            student.set_password(DEFAULT_PASSWORD)
-        student.is_staff = False
-        student.is_superuser = False
-        student.is_active = True
-        student.role = role_user
-        student.save()
+        environment = "development" if settings.DEBUG else "production"
+        self.stdout.write(self.style.SUCCESS(f"System defaults are ready ({environment})."))
 
-        self.stdout.write(self.style.SUCCESS("Local defaults are ready."))
-        self.stdout.write("Accounts: admin / endteacher / enduser")
-        self.stdout.write(f"Default password: {DEFAULT_PASSWORD}")
+    @staticmethod
+    def _ensure_user(username, password, role, *, is_staff, is_superuser):
+        user, created = User.objects.get_or_create(username=username, defaults={"role": role})
+        if (created or not user.has_usable_password()) and password:
+            user.set_password(password)
+        user.is_staff = is_staff
+        user.is_superuser = is_superuser
+        user.is_active = True
+        user.role = role
+        user.save()
+        return user

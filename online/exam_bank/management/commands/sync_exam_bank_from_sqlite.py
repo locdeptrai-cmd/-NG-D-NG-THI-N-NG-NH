@@ -11,12 +11,15 @@ from exam_bank.api_services import ensure_question_packages, refresh_package
 from exam_bank.models import (
     SUBJECT_GROUPS,
     Answer,
-    AttemptAnswer,
     Category,
     Document,
-    ExamQuestion,
     Question,
     Subject,
+)
+from exam_bank.question_lifecycle import (
+    ARCHIVED_CODE_PREFIX,
+    archive_question,
+    question_has_history,
 )
 
 
@@ -71,9 +74,9 @@ class Command(BaseCommand):
             target_codes = []
             for code, total in sorted(source_counts.items()):
                 dest_codes = set(
-                    Question.objects.filter(subject__code=code).values_list(
-                        "code", flat=True
-                    )
+                    Question.objects.filter(subject__code=code)
+                    .exclude(code__startswith=ARCHIVED_CODE_PREFIX)
+                    .values_list("code", flat=True)
                 )
                 source_codes = source_codes_by_subject.get(code, set())
                 dest_total = len(dest_codes)
@@ -105,7 +108,8 @@ class Command(BaseCommand):
                 "Synced exam bank from SQLite: "
                 f"subjects={stats['subjects']}, categories={stats['categories']}, "
                 f"documents={stats['documents']}, questions={stats['questions']}, "
-                f"answers={stats['answers']}, deleted={stats['deleted_questions']}"
+                f"answers={stats['answers']}, deleted={stats['deleted_questions']}, "
+                f"archived={stats['archived_questions']}"
             )
         )
 
@@ -215,6 +219,7 @@ class Command(BaseCommand):
             "questions": 0,
             "answers": 0,
             "deleted_questions": 0,
+            "archived_questions": 0,
         }
         target_set = set(target_codes)
         subject_id_map = {}
@@ -277,26 +282,40 @@ class Command(BaseCommand):
             if subject is None or category is None:
                 continue
 
-            question, _ = Question.objects.update_or_create(
-                code=row["code"],
-                defaults={
-                    "content": row["content"] or "",
-                    "explanation": row["explanation"] or "",
-                    "question_type": row["question_type"] or Question.TYPE_SINGLE,
-                    "subject": subject,
-                    "category": category,
-                    "difficulty": row["difficulty"] or "",
-                    "topic": row["topic"] or "",
-                    "position_scope": row["position_scope"] or "",
-                    "status": row["status"] or Question.STATUS_DRAFT,
-                    "is_locked_for_official_exam": bool(
-                        row["is_locked_for_official_exam"]
-                    ),
-                    "reference_document": document_id_map.get(
-                        row["reference_document_id"]
-                    ),
-                },
-            )
+            defaults = {
+                "content": row["content"] or "",
+                "explanation": row["explanation"] or "",
+                "question_type": row["question_type"] or Question.TYPE_SINGLE,
+                "subject": subject,
+                "category": category,
+                "difficulty": row["difficulty"] or "",
+                "topic": row["topic"] or "",
+                "position_scope": row["position_scope"] or "",
+                "status": row["status"] or Question.STATUS_DRAFT,
+                "is_locked_for_official_exam": bool(
+                    row["is_locked_for_official_exam"]
+                ),
+                "reference_document": document_id_map.get(
+                    row["reference_document_id"]
+                ),
+            }
+            question = Question.objects.filter(code=row["code"]).first()
+            expected_answers = snapshot["answers_by_question"].get(row["id"], [])
+            if (
+                question is not None
+                and question_has_history(question)
+                and not self._matches_snapshot(question, defaults, expected_answers)
+            ):
+                archive_question(question)
+                stats["archived_questions"] += 1
+                question = None
+
+            if question is None:
+                question = Question.objects.create(code=row["code"], **defaults)
+            else:
+                for field, value in defaults.items():
+                    setattr(question, field, value)
+                question.save()
             stats["questions"] += 1
 
             keep_labels = set()
@@ -321,14 +340,63 @@ class Command(BaseCommand):
         # Replace semantics: drop destination questions that are not in the
         # source snapshot (e.g. old SUP codes left behind after a full reimport).
         keep_codes = {row["code"] for row in question_rows if row.get("code")}
-        orphan_qs = Question.objects.filter(subject__code__in=target_set).exclude(
-            code__in=keep_codes
+        orphan_qs = (
+            Question.objects.filter(subject__code__in=target_set)
+            .exclude(code__in=keep_codes)
+            .exclude(code__startswith=ARCHIVED_CODE_PREFIX)
         )
         orphan_ids = list(orphan_qs.values_list("id", flat=True))
         if orphan_ids:
-            AttemptAnswer.objects.filter(question_id__in=orphan_ids).delete()
-            ExamQuestion.objects.filter(question_id__in=orphan_ids).delete()
-            deleted_count, _ = Question.objects.filter(id__in=orphan_ids).delete()
-            stats["deleted_questions"] = deleted_count
+            for orphan in orphan_qs.prefetch_related(
+                "exam_questions", "attempt_answers"
+            ):
+                if question_has_history(orphan):
+                    archive_question(orphan)
+                    stats["archived_questions"] += 1
+                else:
+                    orphan.delete()
+                    stats["deleted_questions"] += 1
 
         return stats
+
+    @staticmethod
+    def _matches_snapshot(question, defaults, expected_answers):
+        scalar_fields = (
+            "content",
+            "explanation",
+            "question_type",
+            "difficulty",
+            "topic",
+            "position_scope",
+            "status",
+            "is_locked_for_official_exam",
+        )
+        if any(getattr(question, field) != defaults[field] for field in scalar_fields):
+            return False
+        if question.subject_id != defaults["subject"].id:
+            return False
+        if question.category_id != defaults["category"].id:
+            return False
+        expected_document_id = (
+            defaults["reference_document"].id
+            if defaults["reference_document"] is not None
+            else None
+        )
+        if question.reference_document_id != expected_document_id:
+            return False
+
+        current = [
+            (answer.label, answer.content, bool(answer.is_correct), answer.order)
+            for answer in question.answers.order_by("order", "id")
+        ]
+        expected = [
+            (
+                (answer["label"] or "").strip().upper(),
+                answer["content"] or "",
+                bool(answer["is_correct"]),
+                int(answer["sort_order"] or 1),
+            )
+            for answer in expected_answers
+            if (answer["label"] or "").strip()
+        ]
+        return current == expected
