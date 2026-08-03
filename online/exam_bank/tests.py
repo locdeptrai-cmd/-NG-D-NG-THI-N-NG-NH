@@ -40,6 +40,7 @@ from .question_selection import (
     recent_completed_question_ids,
     select_balanced_mock_questions,
     tsn_target_count,
+    uses_tsn_ratio,
 )
 
 
@@ -387,6 +388,39 @@ class BalancedQuestionSelectionTests(TestCase):
         )
         ids = [question.id for question in selected]
         self.assertEqual(len(ids), len(set(ids)))
+
+    def test_acs_sup_subjects_skip_tsn_ratio_and_balance_categories(self):
+        for code in ("ACS SUP HCM", "SUP ACS HAN"):
+            self.assertFalse(uses_tsn_ratio(code))
+            subject, _ = Subject.objects.get_or_create(
+                code=code, defaults={"name": code}
+            )
+            Question.objects.filter(subject=subject).delete()
+            Category.objects.filter(subject=subject).delete()
+            categories = [
+                Category.objects.create(subject=subject, name=f"{code} Cat {idx}")
+                for idx in range(5)
+            ]
+            for category in categories:
+                for idx in range(10):
+                    Question.objects.create(
+                        code=f"{code}-Q-{category.id}-{idx}",
+                        content=f"General knowledge {category.id}-{idx}",
+                        subject=subject,
+                        category=category,
+                        status=Question.STATUS_APPROVED,
+                    )
+            selected, distribution = select_balanced_mock_questions(
+                subject,
+                20,
+                rng=random.Random(3),
+            )
+            self.assertEqual(len(selected), 20)
+            self.assertEqual(distribution["tsn_percent"], 0)
+            self.assertEqual(distribution["strategy"], "equal_categories_no_tsn_ratio")
+            counts = Counter(question.category_id for question in selected)
+            self.assertEqual(len(counts), 5)
+            self.assertLessEqual(max(counts.values()) - min(counts.values()), 1)
 
     def test_next_web_exam_excludes_last_six_submitted_exams(self):
         all_excluded = set()

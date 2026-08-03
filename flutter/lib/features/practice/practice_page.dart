@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../data/models/exam_models.dart';
+import '../../data/repositories/question_selector.dart';
 import '../../ui/atc_theme.dart';
 import 'practice_session_page.dart';
 
@@ -40,11 +41,15 @@ class _PracticePageState extends ConsumerState<PracticePage> {
         Text('Tạo bài luyện tập',
             style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 8),
-        const Text(
-          'Đề gồm 35% câu Tân Sơn Nhất (TSN), 65% kiến thức còn lại và '
-          'được chia đều theo loại kiến thức. Lần kế tiếp không lặp câu '
-          'của bài đã nộp gần nhất.',
-          style: TextStyle(color: Colors.white60),
+        Text(
+          selected != null && !usesTsnRatio(selected.subject.code)
+              ? 'ACS SUP HCM / SUP ACS HAN: chia đều theo loại kiến thức, '
+                  'không áp dụng tỷ lệ 35% Tân Sơn Nhất. Không lặp câu của '
+                  '6 bài đã nộp gần nhất.'
+              : 'Đề gồm 35% câu Tân Sơn Nhất (TSN), 65% kiến thức còn lại và '
+                  'được chia đều theo loại kiến thức. Không lặp câu của '
+                  '6 bài đã nộp gần nhất.',
+          style: const TextStyle(color: Colors.white60),
         ),
         const SizedBox(height: 28),
         if (downloaded.isEmpty)

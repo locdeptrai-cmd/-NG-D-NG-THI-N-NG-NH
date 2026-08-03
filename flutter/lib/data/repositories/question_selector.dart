@@ -5,6 +5,12 @@ import '../models/exam_models.dart';
 const supportedMockQuestionCounts = [10, 20, 50];
 const tsnQuestionPercent = 35;
 const recentExamExclusionLimit = 6;
+const categoryOnlySubjects = {'ACS SUP HCM', 'SUP ACS HAN'};
+
+bool usesTsnRatio(String? subjectCode) {
+  final code = (subjectCode ?? '').trim().toUpperCase();
+  return !categoryOnlySubjects.map((item) => item.toUpperCase()).contains(code);
+}
 
 int tsnTargetCount(int total) {
   if (!supportedMockQuestionCounts.contains(total)) {
@@ -29,34 +35,46 @@ List<QuestionItem> selectBalancedMockQuestions(
   List<QuestionItem> available,
   int total, {
   Set<int> excludedQuestionIds = const {},
+  String? subjectCode,
   Random? random,
 }) {
   final rng = random ?? Random.secure();
-  final tsnCount = tsnTargetCount(total);
-  final otherCount = total - tsnCount;
   final eligible = available
       .where((question) => !excludedQuestionIds.contains(question.id))
       .toList();
-  final tsn = eligible.where(isTsnQuestion).toList();
-  final other = eligible.where((question) => !isTsnQuestion(question)).toList();
 
-  if (tsn.length < tsnCount) {
-    throw StateError(
-      'Ngân hàng chỉ còn ${tsn.length} câu TSN; cần $tsnCount câu '
-      'để đạt tỷ lệ $tsnQuestionPercent%.',
-    );
-  }
-  if (other.length < otherCount) {
-    throw StateError(
-      'Ngân hàng chỉ còn ${other.length} câu ngoài TSN; '
-      'cần $otherCount câu.',
-    );
+  final List<QuestionItem> selected;
+  if (usesTsnRatio(subjectCode)) {
+    final tsnCount = tsnTargetCount(total);
+    final otherCount = total - tsnCount;
+    final tsn = eligible.where(isTsnQuestion).toList();
+    final other = eligible.where((question) => !isTsnQuestion(question)).toList();
+
+    if (tsn.length < tsnCount) {
+      throw StateError(
+        'Ngân hàng chỉ còn ${tsn.length} câu TSN; cần $tsnCount câu '
+        'để đạt tỷ lệ $tsnQuestionPercent%.',
+      );
+    }
+    if (other.length < otherCount) {
+      throw StateError(
+        'Ngân hàng chỉ còn ${other.length} câu ngoài TSN; '
+        'cần $otherCount câu.',
+      );
+    }
+    selected = [
+      ..._balancedTake(tsn, tsnCount, rng),
+      ..._balancedTake(other, otherCount, rng),
+    ];
+  } else {
+    if (eligible.length < total) {
+      throw StateError(
+        'Ngân hàng chỉ còn ${eligible.length} câu; cần $total câu.',
+      );
+    }
+    selected = _balancedTake(eligible, total, rng);
   }
 
-  final selected = [
-    ..._balancedTake(tsn, tsnCount, rng),
-    ..._balancedTake(other, otherCount, rng),
-  ];
   final unique = <QuestionItem>[];
   final seenIds = <int>{};
   for (final question in selected) {

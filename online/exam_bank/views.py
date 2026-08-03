@@ -30,6 +30,7 @@ from .question_selection import (
     is_tsn_question,
     recent_completed_question_ids,
     select_balanced_mock_questions,
+    uses_tsn_ratio,
 )
 
 DEFAULT_QUESTION_COUNT = 50
@@ -213,7 +214,9 @@ def start_exam(request):
             mix_answers=True,
             matrix_config={
                 "group": group_code,
-                "strategy": "tsn_35_balanced_categories_no_last_6",
+                "strategy": distribution.get(
+                    "strategy", "tsn_35_balanced_categories_no_last_6"
+                ),
                 **distribution,
             },
             created_by=request.user,
@@ -237,8 +240,10 @@ def start_exam(request):
                 is_locked_for_official_exam=False,
             ).select_related("category")
         )
+        subject.uses_tsn_ratio = uses_tsn_ratio(subject)
         subject.mock_tsn_count = sum(is_tsn_question(q) for q in questions)
         subject.mock_other_count = len(questions) - subject.mock_tsn_count
+        subject.mock_total_count = len(questions)
     return render(
         request,
         "start_exam.html",

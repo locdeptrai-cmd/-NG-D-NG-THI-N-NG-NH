@@ -4,10 +4,9 @@
 <div class="card">
   <h3>Chọn nhóm thi</h3>
   <p class="small">
-    Đề gồm 35% câu Tân Sơn Nhất (TSN) và 65% kiến thức còn lại.
-    Các loại kiến thức trong từng phần được phân bổ cân bằng; đề kế tiếp
-    không lặp câu của lần đã nộp gần nhất. Do số câu phải là số nguyên,
-    phần TSN tương ứng là 4/10, 7/20 hoặc 18/50 câu.
+    APS/ADC/ACC HAN/SUP: đề gồm 35% câu Tân Sơn Nhất (TSN) và 65% kiến thức còn lại,
+    chia đều theo loại kiến thức. ACS SUP HCM / SUP ACS HAN: bỏ tỷ lệ TSN 35%,
+    chỉ chia đều theo từng loại kiến thức. Không lặp câu của 6 đề đã nộp gần nhất.
   </p>
   <form method="post">
     {% csrf_token %}
@@ -16,7 +15,11 @@
       <label>
         <input type="radio" name="group_code" value="{{ s.code }}" {% if forloop.first %}checked{% endif %}>
         {{ s.code }} - {{ s.name }}
+        {% if s.uses_tsn_ratio %}
         <span class="small">(TSN: {{ s.mock_tsn_count }} | còn lại: {{ s.mock_other_count }})</span>
+        {% else %}
+        <span class="small">(chia đều loại kiến thức · tổng: {{ s.mock_total_count }})</span>
+        {% endif %}
       </label>
     </p>
     {% endfor %}

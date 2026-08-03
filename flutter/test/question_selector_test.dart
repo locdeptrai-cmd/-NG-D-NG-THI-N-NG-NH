@@ -34,6 +34,27 @@ void main() {
     }
   });
 
+  test('ACS SUP subjects skip TSN ratio and balance categories', () {
+    final questions = <QuestionItem>[];
+    var id = 1;
+    for (var category = 1; category <= 5; category++) {
+      for (var index = 0; index < 12; index++) {
+        questions.add(_question(id++, category, category == 1));
+      }
+    }
+    final selected = selectBalancedMockQuestions(
+      questions,
+      20,
+      subjectCode: 'ACS SUP HCM',
+      random: Random(4),
+    );
+    expect(selected, hasLength(20));
+    expect(usesTsnRatio('ACS SUP HCM'), isFalse);
+    expect(usesTsnRatio('SUP ACS HAN'), isFalse);
+    expect(usesTsnRatio('ADC'), isTrue);
+    _expectBalanced(selected);
+  });
+
   test('excludes questions from recent sessions and avoids duplicates', () {
     final questions = <QuestionItem>[];
     var id = 1;

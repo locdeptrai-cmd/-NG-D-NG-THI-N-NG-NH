@@ -11,9 +11,18 @@ from .models import Attempt, PracticeAttempt, Question
 
 ALLOWED_MOCK_QUESTION_COUNTS = (10, 20, 50)
 TSN_PERCENT = 35
+# These rating banks skip the 35% TSN split and only balance by knowledge category.
+CATEGORY_ONLY_SUBJECTS = frozenset({"ACS SUP HCM", "SUP ACS HAN"})
 # Skip questions that appeared in any of the user's last N completed
 # practice/mock exams for the same subject.
 RECENT_EXAM_EXCLUSION_LIMIT = 6
+
+
+def uses_tsn_ratio(subject) -> bool:
+    code = getattr(subject, "code", subject)
+    return str(code or "").strip().upper() not in {
+        item.upper() for item in CATEGORY_ONLY_SUBJECTS
+    }
 
 
 class QuestionSelectionError(ValueError):
@@ -97,8 +106,7 @@ def select_balanced_mock_questions(
 ):
     rng = rng or random.SystemRandom()
     excluded_question_ids = set(excluded_question_ids or [])
-    tsn_count = tsn_target_count(total_questions)
-    other_count = total_questions - tsn_count
+    apply_tsn = uses_tsn_ratio(subject)
 
     queryset = (
         Question.objects.filter(
@@ -112,29 +120,71 @@ def select_balanced_mock_questions(
     if excluded_question_ids:
         queryset = queryset.exclude(id__in=excluded_question_ids)
 
-    tsn_pool = []
-    other_pool = []
+    pool = []
     seen_ids = set()
     for question in queryset:
         if question.id in seen_ids:
             continue
         seen_ids.add(question.id)
-        (tsn_pool if is_tsn_question(question) else other_pool).append(question)
+        pool.append(question)
 
-    if len(tsn_pool) < tsn_count:
-        raise QuestionSelectionError(
-            f"Ngân hàng {subject.code} chỉ còn {len(tsn_pool)} câu TSN; "
-            f"cần {tsn_count} câu để đạt tỷ lệ {TSN_PERCENT}%."
-        )
-    if len(other_pool) < other_count:
-        raise QuestionSelectionError(
-            f"Ngân hàng {subject.code} chỉ còn {len(other_pool)} câu ngoài TSN; "
-            f"cần {other_count} câu để đạt tỷ lệ {100 - TSN_PERCENT}%."
-        )
+    if apply_tsn:
+        tsn_count = tsn_target_count(total_questions)
+        other_count = total_questions - tsn_count
+        tsn_pool = [question for question in pool if is_tsn_question(question)]
+        other_pool = [
+            question for question in pool if not is_tsn_question(question)
+        ]
+        if len(tsn_pool) < tsn_count:
+            raise QuestionSelectionError(
+                f"Ngân hàng {subject.code} chỉ còn {len(tsn_pool)} câu TSN; "
+                f"cần {tsn_count} câu để đạt tỷ lệ {TSN_PERCENT}%."
+            )
+        if len(other_pool) < other_count:
+            raise QuestionSelectionError(
+                f"Ngân hàng {subject.code} chỉ còn {len(other_pool)} câu ngoài TSN; "
+                f"cần {other_count} câu để đạt tỷ lệ {100 - TSN_PERCENT}%."
+            )
+        selected_tsn = _balanced_take(tsn_pool, tsn_count, rng)
+        selected_other = _balanced_take(other_pool, other_count, rng)
+        selected = [*selected_tsn, *selected_other]
+        distribution = {
+            "total_questions": total_questions,
+            "strategy": "tsn_35_balanced_categories",
+            "tsn_percent": TSN_PERCENT,
+            "tsn_question_count": len(selected_tsn),
+            "other_question_count": len(selected_other),
+            "tsn_categories": dict(
+                Counter(q.category.name for q in selected_tsn)
+            ),
+            "other_categories": dict(
+                Counter(q.category.name for q in selected_other)
+            ),
+            "categories": dict(Counter(q.category.name for q in selected)),
+            "excluded_previous_questions": len(excluded_question_ids),
+            "recent_exams_excluded": RECENT_EXAM_EXCLUSION_LIMIT,
+        }
+    else:
+        if len(pool) < total_questions:
+            raise QuestionSelectionError(
+                f"Ngân hàng {subject.code} chỉ còn {len(pool)} câu; "
+                f"cần {total_questions} câu."
+            )
+        selected = _balanced_take(pool, total_questions, rng)
+        selected_tsn = [question for question in selected if is_tsn_question(question)]
+        distribution = {
+            "total_questions": total_questions,
+            "strategy": "equal_categories_no_tsn_ratio",
+            "tsn_percent": 0,
+            "tsn_question_count": len(selected_tsn),
+            "other_question_count": len(selected) - len(selected_tsn),
+            "tsn_categories": {},
+            "other_categories": {},
+            "categories": dict(Counter(q.category.name for q in selected)),
+            "excluded_previous_questions": len(excluded_question_ids),
+            "recent_exams_excluded": RECENT_EXAM_EXCLUSION_LIMIT,
+        }
 
-    selected_tsn = _balanced_take(tsn_pool, tsn_count, rng)
-    selected_other = _balanced_take(other_pool, other_count, rng)
-    selected = [*selected_tsn, *selected_other]
     # Guard: never allow duplicate question ids inside one exam.
     unique_selected = []
     unique_ids = set()
@@ -149,16 +199,7 @@ def select_balanced_mock_questions(
             f"(chỉ chọn được {len(unique_selected)} câu)."
         )
     rng.shuffle(unique_selected)
-    return unique_selected, {
-        "total_questions": total_questions,
-        "tsn_percent": TSN_PERCENT,
-        "tsn_question_count": len(selected_tsn),
-        "other_question_count": len(selected_other),
-        "tsn_categories": dict(Counter(q.category.name for q in selected_tsn)),
-        "other_categories": dict(Counter(q.category.name for q in selected_other)),
-        "excluded_previous_questions": len(excluded_question_ids),
-        "recent_exams_excluded": RECENT_EXAM_EXCLUSION_LIMIT,
-    }
+    return unique_selected, distribution
 
 
 def _session_sort_key(item):

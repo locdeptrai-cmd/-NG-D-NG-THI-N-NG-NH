@@ -90,6 +90,7 @@ class QuestionRepository {
       available,
       questionCount,
       excludedQuestionIds: excluded,
+      subjectCode: package.subject.code,
     );
     return PracticeSession(
       id: 'local-${_uuid.v4()}',

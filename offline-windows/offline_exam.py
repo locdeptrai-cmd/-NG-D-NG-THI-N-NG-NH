@@ -11,6 +11,13 @@ from tkinter import messagebox
 QUESTION_COUNTS = (10, 20, 50)
 TSN_PERCENT = 35
 RECENT_EXAM_EXCLUSION_LIMIT = 6
+CATEGORY_ONLY_SUBJECTS = frozenset({"ACS SUP HCM", "SUP ACS HAN"})
+
+
+def uses_tsn_ratio(subject_code):
+    return str(subject_code or "").strip().upper() not in {
+        item.upper() for item in CATEGORY_ONLY_SUBJECTS
+    }
 
 
 def offline_db_path():
@@ -69,7 +76,7 @@ def balanced_take(questions, count, rng):
     return selected
 
 
-def select_balanced_exam(pool, total, excluded_ids=None, rng=None):
+def select_balanced_exam(pool, total, excluded_ids=None, subject_code=None, rng=None):
     rng = rng or random.SystemRandom()
     excluded_ids = set(excluded_ids or [])
     seen_ids = set()
@@ -80,22 +87,32 @@ def select_balanced_exam(pool, total, excluded_ids=None, rng=None):
             continue
         seen_ids.add(question_id)
         available.append(item)
-    tsn_count = tsn_target_count(total)
-    other_count = total - tsn_count
-    tsn_pool = [item for item in available if is_tsn_question(item)]
-    other_pool = [item for item in available if not is_tsn_question(item)]
-    if len(tsn_pool) < tsn_count:
-        raise ValueError(
-            f"Ngân hàng chỉ còn {len(tsn_pool)} câu TSN; cần {tsn_count} câu."
-        )
-    if len(other_pool) < other_count:
-        raise ValueError(
-            f"Ngân hàng chỉ còn {len(other_pool)} câu ngoài TSN; cần {other_count} câu."
-        )
-    selected = [
-        *balanced_take(tsn_pool, tsn_count, rng),
-        *balanced_take(other_pool, other_count, rng),
-    ]
+
+    code = subject_code or (available[0].get("subject") if available else None)
+    if uses_tsn_ratio(code):
+        tsn_count = tsn_target_count(total)
+        other_count = total - tsn_count
+        tsn_pool = [item for item in available if is_tsn_question(item)]
+        other_pool = [item for item in available if not is_tsn_question(item)]
+        if len(tsn_pool) < tsn_count:
+            raise ValueError(
+                f"Ngân hàng chỉ còn {len(tsn_pool)} câu TSN; cần {tsn_count} câu."
+            )
+        if len(other_pool) < other_count:
+            raise ValueError(
+                f"Ngân hàng chỉ còn {len(other_pool)} câu ngoài TSN; cần {other_count} câu."
+            )
+        selected = [
+            *balanced_take(tsn_pool, tsn_count, rng),
+            *balanced_take(other_pool, other_count, rng),
+        ]
+    else:
+        if len(available) < total:
+            raise ValueError(
+                f"Ngân hàng chỉ còn {len(available)} câu; cần {total} câu."
+            )
+        selected = balanced_take(available, total, rng)
+
     unique = []
     unique_ids = set()
     for item in selected:
@@ -308,6 +325,7 @@ class OfflineExamApp(tk.Tk):
                 pool,
                 question_count,
                 excluded_ids=self.excluded_question_ids(subject),
+                subject_code=subject,
             )
         except ValueError as exc:
             messagebox.showwarning("Thiếu dữ liệu", str(exc))
