@@ -20,26 +20,44 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ secrets.VERCEL_TOKEN != '' }}
     steps:
+      - name: Require Vercel secrets
+        id: secrets
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Missing VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID — skip Vercel deploy."
+          else
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout source
+        if: steps.secrets.outputs.missing == 'false'
         uses: actions/checkout@v4
 
       - name: Install Flutter
+        if: steps.secrets.outputs.missing == 'false'
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
       - name: Install dependencies
+        if: steps.secrets.outputs.missing == 'false'
         working-directory: flutter
         run: flutter pub get
 
       - name: Generate Drift sources
+        if: steps.secrets.outputs.missing == 'false'
         working-directory: flutter
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Download SQLite WebAssembly
+        if: steps.secrets.outputs.missing == 'false'
         working-directory: flutter
         run: |
           curl -L --fail \
@@ -47,10 +65,12 @@ jobs:
             -o web/sqlite3.wasm
 
       - name: Compile Drift web worker
+        if: steps.secrets.outputs.missing == 'false'
         working-directory: flutter
         run: dart compile js web/drift_worker.dart -o web/drift_worker.js
 
       - name: Build web for Vercel
+        if: steps.secrets.outputs.missing == 'false'
         working-directory: flutter
         shell: bash
         run: |
@@ -58,15 +78,21 @@ jobs:
           echo "Building PWA with ATC_API_BASE_URL=$api_base_url"
           flutter build web --release --base-href "/" \
             --dart-define="ATC_API_BASE_URL=$api_base_url"
-          cp ../vercel.json build/web/vercel.json
+          cp vercel.static.json build/web/vercel.json
 
       - name: Install Vercel CLI
+        if: steps.secrets.outputs.missing == 'false'
         run: npm install -g vercel@latest
 
       - name: Deploy to Vercel
+        if: steps.secrets.outputs.missing == 'false'
         working-directory: flutter/build/web
         run: |
           vercel deploy --prod --yes --token="${{ secrets.VERCEL_TOKEN }}"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Skip notice
+        if: steps.secrets.outputs.missing == 'true'
+        run: echo "Vercel Action skipped — deploy via CLI to project atc-exam-pwa."
