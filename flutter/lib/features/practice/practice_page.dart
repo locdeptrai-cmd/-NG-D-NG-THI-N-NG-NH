@@ -43,12 +43,12 @@ class _PracticePageState extends ConsumerState<PracticePage> {
         const SizedBox(height: 8),
         Text(
           selected != null && !usesTsnRatio(selected.subject.code)
-              ? 'ACS SUP HCM / SUP ACS HAN: chia đều theo loại kiến thức, '
-                  'không áp dụng tỷ lệ 35% Tân Sơn Nhất. Không lặp câu của '
-                  '6 bài đã nộp gần nhất.'
-              : 'Đề gồm 35% câu Tân Sơn Nhất (TSN), 65% kiến thức còn lại và '
-                  'được chia đều theo loại kiến thức. Không lặp câu của '
-                  '6 bài đã nộp gần nhất.',
+              ? 'SUP / ACS SUP HCM / SUP ACS HAN: chia đều theo loại kiến thức, '
+                  'không áp dụng tỷ lệ 35% TSN/LTCS. Số câu 20/50/100. '
+                  'Không lặp câu của 6 bài đã nộp gần nhất.'
+              : 'Đề gồm 35% câu Tân Sơn Nhất (TSN/LTCS), 65% kiến thức còn lại, '
+                  'chia đều theo loại kiến thức. Số câu 20/50/100. '
+                  'Không lặp câu của 6 bài đã nộp gần nhất.',
           style: const TextStyle(color: Colors.white60),
         ),
         const SizedBox(height: 28),
@@ -84,7 +84,7 @@ class _PracticePageState extends ConsumerState<PracticePage> {
                 const SizedBox(height: 12),
                 SegmentedButton<int>(
                   segments: [
-                    for (final value in const [10, 20, 50])
+                    for (final value in supportedMockQuestionCounts)
                       ButtonSegment(value: value, label: Text('$value')),
                   ],
                   selected: {count},

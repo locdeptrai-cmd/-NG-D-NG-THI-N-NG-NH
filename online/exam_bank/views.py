@@ -192,7 +192,7 @@ def start_exam(request):
         except (TypeError, ValueError):
             question_count = 0
         if question_count not in ALLOWED_MOCK_QUESTION_COUNTS:
-            messages.error(request, "Số câu chỉ được chọn 10, 20 hoặc 50.")
+            messages.error(request, "Số câu chỉ được chọn 20, 50 hoặc 100.")
             return redirect("start_exam")
 
         previous_ids = recent_completed_question_ids(request.user, subject)

@@ -345,7 +345,7 @@ class BalancedQuestionSelectionTests(TestCase):
             for idx in range(6)
         ]
         for category in self.tsn_categories:
-            for idx in range(15):
+            for idx in range(30):
                 Question.objects.create(
                     code=f"ADC-TSN-{category.id}-{idx}",
                     content=f"Tan Son Nhat question {category.id}-{idx}",
@@ -354,7 +354,7 @@ class BalancedQuestionSelectionTests(TestCase):
                     status=Question.STATUS_APPROVED,
                 )
         for category in self.other_categories:
-            for idx in range(15):
+            for idx in range(30):
                 Question.objects.create(
                     code=f"ADC-GENERAL-{category.id}-{idx}",
                     content=f"General question {category.id}-{idx}",
@@ -364,8 +364,8 @@ class BalancedQuestionSelectionTests(TestCase):
                 )
 
     def test_tsn_ratio_and_categories_are_balanced_for_supported_sizes(self):
-        self.assertEqual([tsn_target_count(n) for n in (10, 20, 50)], [4, 7, 18])
-        for total, expected_tsn in ((10, 4), (20, 7), (50, 18)):
+        self.assertEqual([tsn_target_count(n) for n in (20, 50, 100)], [7, 18, 35])
+        for total, expected_tsn in ((20, 7), (50, 18), (100, 35)):
             selected, distribution = select_balanced_mock_questions(
                 self.subject,
                 total,
@@ -390,7 +390,7 @@ class BalancedQuestionSelectionTests(TestCase):
         self.assertEqual(len(ids), len(set(ids)))
 
     def test_acs_sup_subjects_skip_tsn_ratio_and_balance_categories(self):
-        for code in ("ACS SUP HCM", "SUP ACS HAN"):
+        for code in ("SUP", "ACS SUP HCM", "SUP ACS HAN"):
             self.assertFalse(uses_tsn_ratio(code))
             subject, _ = Subject.objects.get_or_create(
                 code=code, defaults={"name": code}
@@ -402,7 +402,7 @@ class BalancedQuestionSelectionTests(TestCase):
                 for idx in range(5)
             ]
             for category in categories:
-                for idx in range(10):
+                for idx in range(25):
                     Question.objects.create(
                         code=f"{code}-Q-{category.id}-{idx}",
                         content=f"General knowledge {category.id}-{idx}",
@@ -428,7 +428,7 @@ class BalancedQuestionSelectionTests(TestCase):
         for exam_index in range(RECENT_EXAM_EXCLUSION_LIMIT):
             previous, _ = select_balanced_mock_questions(
                 self.subject,
-                10,
+                20,
                 excluded_question_ids=all_excluded,
                 rng=random.Random(exam_index + 1),
             )
@@ -452,7 +452,7 @@ class BalancedQuestionSelectionTests(TestCase):
         self.assertEqual(excluded, all_excluded)
         selected, distribution = select_balanced_mock_questions(
             self.subject,
-            10,
+            20,
             excluded_question_ids=excluded,
             rng=random.Random(99),
         )
@@ -465,17 +465,17 @@ class BalancedQuestionSelectionTests(TestCase):
         self.client.force_login(self.user)
         response = self.client.post(
             reverse("start_exam"),
-            {"group_code": "ADC", "question_count": "10"},
+            {"group_code": "ADC", "question_count": "20"},
         )
         self.assertEqual(response.status_code, 302)
         new_attempt = Attempt.objects.filter(user=self.user).latest("id")
         new_ids = set(
             new_attempt.exam.exam_questions.values_list("question_id", flat=True)
         )
-        self.assertEqual(len(new_ids), 10)
+        self.assertEqual(len(new_ids), 20)
         self.assertEqual(len(new_ids), len(new_attempt.exam.exam_questions.all()))
         self.assertFalse(new_ids & excluded)
-        self.assertEqual(new_attempt.exam.matrix_config["tsn_question_count"], 4)
+        self.assertEqual(new_attempt.exam.matrix_config["tsn_question_count"], 7)
 
 
 class SetupLocalDefaultsTests(TestCase):

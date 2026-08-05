@@ -9,10 +9,10 @@ from django.utils import timezone
 from .models import Attempt, PracticeAttempt, Question
 
 
-ALLOWED_MOCK_QUESTION_COUNTS = (10, 20, 50)
+ALLOWED_MOCK_QUESTION_COUNTS = (20, 50, 100)
 TSN_PERCENT = 35
-# These rating banks skip the 35% TSN split and only balance by knowledge category.
-CATEGORY_ONLY_SUBJECTS = frozenset({"ACS SUP HCM", "SUP ACS HAN"})
+# These rating banks skip the 35% TSN/LTCS split and only balance by knowledge category.
+CATEGORY_ONLY_SUBJECTS = frozenset({"SUP", "ACS SUP HCM", "SUP ACS HAN"})
 # Skip questions that appeared in any of the user's last N completed
 # practice/mock exams for the same subject.
 RECENT_EXAM_EXCLUSION_LIMIT = 6

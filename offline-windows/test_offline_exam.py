@@ -7,6 +7,7 @@ from offline_exam import (
     normalize_subject_history,
     select_balanced_exam,
     tsn_target_count,
+    uses_tsn_ratio,
 )
 
 
@@ -15,11 +16,11 @@ class OfflineQuestionSelectionTests(unittest.TestCase):
         self.questions = []
         question_id = 1
         for category in range(4):
-            for _ in range(15):
+            for _ in range(40):
                 self.questions.append(self.question(question_id, category, True))
                 question_id += 1
         for category in range(4, 10):
-            for _ in range(15):
+            for _ in range(40):
                 self.questions.append(self.question(question_id, category, False))
                 question_id += 1
 
@@ -30,19 +31,31 @@ class OfflineQuestionSelectionTests(unittest.TestCase):
             "code": f"ADC-{'TSN' if is_tsn else 'GENERAL'}-{question_id}",
             "content": f"Question {question_id}",
             "category": f"Category {category}",
+            "subject": "ADC",
         }
 
     def test_ratio_and_balanced_categories(self):
-        self.assertEqual([tsn_target_count(n) for n in (10, 20, 50)], [4, 7, 18])
-        for total, expected_tsn in ((10, 4), (20, 7), (50, 18)):
+        self.assertEqual([tsn_target_count(n) for n in (20, 50, 100)], [7, 18, 35])
+        for total, expected_tsn in ((20, 7), (50, 18), (100, 35)):
             selected = select_balanced_exam(
                 self.questions,
                 total,
+                subject_code="ADC",
                 rng=random.Random(total),
             )
             tsn = [item for item in selected if is_tsn_question(item)]
             self.assertEqual(len(selected), total)
             self.assertEqual(len(tsn), expected_tsn)
+
+    def test_sup_skips_tsn_ratio(self):
+        self.assertFalse(uses_tsn_ratio("SUP"))
+        selected = select_balanced_exam(
+            self.questions,
+            20,
+            subject_code="SUP",
+            rng=random.Random(5),
+        )
+        self.assertEqual(len(selected), 20)
 
     def test_excludes_previous_question_ids(self):
         excluded = {item["id"] for item in self.questions[:10]}
@@ -50,6 +63,7 @@ class OfflineQuestionSelectionTests(unittest.TestCase):
             self.questions,
             20,
             excluded_ids=excluded,
+            subject_code="ADC",
             rng=random.Random(2),
         )
         self.assertFalse({item["id"] for item in selected} & excluded)
@@ -72,7 +86,6 @@ class OfflineQuestionSelectionTests(unittest.TestCase):
         self.assertEqual(normalized[0][0], 11)
         excluded = excluded_ids_from_history(history, "ADC")
         self.assertEqual(excluded, set(range(11, 71)))
-        # Legacy flat list still works as one prior exam.
         self.assertEqual(
             normalize_subject_history(list(range(1, 6))),
             [list(range(1, 6))],

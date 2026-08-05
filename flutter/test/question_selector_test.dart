@@ -9,17 +9,17 @@ void main() {
     final questions = <QuestionItem>[];
     var id = 1;
     for (var category = 1; category <= 4; category++) {
-      for (var index = 0; index < 15; index++) {
+      for (var index = 0; index < 40; index++) {
         questions.add(_question(id++, category, true));
       }
     }
     for (var category = 5; category <= 10; category++) {
-      for (var index = 0; index < 15; index++) {
+      for (var index = 0; index < 40; index++) {
         questions.add(_question(id++, category, false));
       }
     }
 
-    for (final entry in {10: 4, 20: 7, 50: 18}.entries) {
+    for (final entry in {20: 7, 50: 18, 100: 35}.entries) {
       final selected = selectBalancedMockQuestions(
         questions,
         entry.key,
@@ -34,44 +34,47 @@ void main() {
     }
   });
 
-  test('ACS SUP subjects skip TSN ratio and balance categories', () {
+  test('SUP and ACS SUP subjects skip TSN ratio and balance categories', () {
     final questions = <QuestionItem>[];
     var id = 1;
     for (var category = 1; category <= 5; category++) {
-      for (var index = 0; index < 12; index++) {
+      for (var index = 0; index < 25; index++) {
         questions.add(_question(id++, category, category == 1));
       }
     }
-    final selected = selectBalancedMockQuestions(
-      questions,
-      20,
-      subjectCode: 'ACS SUP HCM',
-      random: Random(4),
-    );
-    expect(selected, hasLength(20));
-    expect(usesTsnRatio('ACS SUP HCM'), isFalse);
-    expect(usesTsnRatio('SUP ACS HAN'), isFalse);
+    for (final code in ['SUP', 'ACS SUP HCM', 'SUP ACS HAN']) {
+      final selected = selectBalancedMockQuestions(
+        questions,
+        20,
+        subjectCode: code,
+        random: Random(4),
+      );
+      expect(selected, hasLength(20));
+      expect(usesTsnRatio(code), isFalse);
+      _expectBalanced(selected);
+    }
     expect(usesTsnRatio('ADC'), isTrue);
-    _expectBalanced(selected);
   });
 
   test('excludes questions from recent sessions and avoids duplicates', () {
     final questions = <QuestionItem>[];
     var id = 1;
     for (var category = 1; category <= 4; category++) {
-      for (var index = 0; index < 20; index++) {
+      for (var index = 0; index < 40; index++) {
         questions.add(_question(id++, category, true));
       }
     }
     for (var category = 5; category <= 10; category++) {
-      for (var index = 0; index < 20; index++) {
+      for (var index = 0; index < 40; index++) {
         questions.add(_question(id++, category, false));
       }
     }
-    // Exclude 6 prior 10-question sessions without draining the TSN pool.
     final excluded = <int>{
-      ...questions.where(isTsnQuestion).take(24).map((item) => item.id),
-      ...questions.where((item) => !isTsnQuestion(item)).take(36).map((item) => item.id),
+      ...questions.where(isTsnQuestion).take(42).map((item) => item.id),
+      ...questions
+          .where((item) => !isTsnQuestion(item))
+          .take(78)
+          .map((item) => item.id),
     };
     final selected = selectBalancedMockQuestions(
       questions,
@@ -82,6 +85,7 @@ void main() {
     final selectedIds = selected.map((item) => item.id).toList();
     expect(selectedIds.toSet().intersection(excluded), isEmpty);
     expect(selectedIds.toSet(), hasLength(selectedIds.length));
+    expect(supportedMockQuestionCounts, [20, 50, 100]);
     expect(recentExamExclusionLimit, 6);
   });
 }

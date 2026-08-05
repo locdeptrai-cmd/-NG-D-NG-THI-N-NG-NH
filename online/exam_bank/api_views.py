@@ -122,7 +122,7 @@ class PracticeStartAPIView(APIView):
             raise ValidationError({"question_count": "Số câu hỏi không hợp lệ."})
         if count not in ALLOWED_MOCK_QUESTION_COUNTS:
             raise ValidationError(
-                {"question_count": "Số câu chỉ được chọn 10, 20 hoặc 50."}
+                {"question_count": "Số câu chỉ được chọn 20, 50 hoặc 100."}
             )
         previous_ids = recent_completed_question_ids(request.user, subject)
         try:

@@ -8,10 +8,10 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox
 
-QUESTION_COUNTS = (10, 20, 50)
+QUESTION_COUNTS = (20, 50, 100)
 TSN_PERCENT = 35
 RECENT_EXAM_EXCLUSION_LIMIT = 6
-CATEGORY_ONLY_SUBJECTS = frozenset({"ACS SUP HCM", "SUP ACS HAN"})
+CATEGORY_ONLY_SUBJECTS = frozenset({"SUP", "ACS SUP HCM", "SUP ACS HAN"})
 
 
 def uses_tsn_ratio(subject_code):
@@ -48,8 +48,8 @@ def is_tsn_question(question):
 
 def tsn_target_count(total):
     if total not in QUESTION_COUNTS:
-        raise ValueError("Số câu chỉ được chọn 10, 20 hoặc 50.")
-    return round(total * TSN_PERCENT / 100)
+        raise ValueError("Số câu chỉ được chọn 20, 50 hoặc 100.")
+    return int(total * TSN_PERCENT / 100 + 0.5)
 
 
 def balanced_take(questions, count, rng):
@@ -298,8 +298,9 @@ class OfflineExamApp(tk.Tk):
         tk.Label(
             self.container,
             text=(
-                "35% câu TSN (4/10, 7/20, 18/50), 65% kiến thức còn lại; "
-                "chia đều theo loại và không lặp bài gần nhất."
+                "APS/ADC/ACC HAN: 35% TSN (7/20, 18/50, 35/100). "
+                "SUP/ACS: chia đều loại kiến thức, không TSN 35%. "
+                "Không lặp 6 bài gần nhất."
             ),
             bg="#0a2a66",
             fg="white",

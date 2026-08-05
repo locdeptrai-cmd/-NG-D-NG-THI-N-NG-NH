@@ -2,10 +2,10 @@ import 'dart:math';
 
 import '../models/exam_models.dart';
 
-const supportedMockQuestionCounts = [10, 20, 50];
+const supportedMockQuestionCounts = [20, 50, 100];
 const tsnQuestionPercent = 35;
 const recentExamExclusionLimit = 6;
-const categoryOnlySubjects = {'ACS SUP HCM', 'SUP ACS HAN'};
+const categoryOnlySubjects = {'SUP', 'ACS SUP HCM', 'SUP ACS HAN'};
 
 bool usesTsnRatio(String? subjectCode) {
   final code = (subjectCode ?? '').trim().toUpperCase();
@@ -14,7 +14,7 @@ bool usesTsnRatio(String? subjectCode) {
 
 int tsnTargetCount(int total) {
   if (!supportedMockQuestionCounts.contains(total)) {
-    throw ArgumentError('Số câu chỉ được chọn 10, 20 hoặc 50.');
+    throw ArgumentError('Số câu chỉ được chọn 20, 50 hoặc 100.');
   }
   return (total * tsnQuestionPercent / 100).round();
 }

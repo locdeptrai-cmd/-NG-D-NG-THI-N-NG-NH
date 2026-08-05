@@ -81,7 +81,7 @@ class PwaApiTests(APITestCase):
             subject=self.subject,
             name="Other procedures",
         )
-        for index in range(50):
+        for index in range(70):
             question = Question.objects.create(
                 code=f"ADC-TSN-API-{index}",
                 content=f"TSN question {index}",
@@ -102,7 +102,7 @@ class PwaApiTests(APITestCase):
                 is_correct=False,
                 order=2,
             )
-        for index in range(80):
+        for index in range(120):
             question = Question.objects.create(
                 code=f"ADC-GENERAL-API-{index}",
                 content=f"General question {index}",
@@ -130,14 +130,14 @@ class PwaApiTests(APITestCase):
         for session_index in range(6):
             response = self.client.post(
                 reverse("api_practice_start"),
-                {"subject_id": self.subject.id, "question_count": 10},
+                {"subject_id": self.subject.id, "question_count": 20},
                 format="json",
             )
             self.assertEqual(response.status_code, 200)
             if session_index == 0:
-                self.assertEqual(response.data["distribution"]["tsn_question_count"], 4)
+                self.assertEqual(response.data["distribution"]["tsn_question_count"], 7)
             session_ids = {item["id"] for item in response.data["questions"]}
-            self.assertEqual(len(session_ids), 10)
+            self.assertEqual(len(session_ids), 20)
             self.assertFalse(session_ids & excluded)
             PracticeAttempt.objects.create(
                 user=self.user,
@@ -146,7 +146,7 @@ class PwaApiTests(APITestCase):
                 started_at=base + timedelta(minutes=session_index),
                 completed_at=base + timedelta(minutes=session_index),
                 score=0,
-                total_questions=10,
+                total_questions=20,
                 correct_answers=0,
                 answers=[{"question_id": question_id} for question_id in session_ids],
             )
@@ -154,12 +154,12 @@ class PwaApiTests(APITestCase):
 
         seventh = self.client.post(
             reverse("api_practice_start"),
-            {"subject_id": self.subject.id, "question_count": 10},
+            {"subject_id": self.subject.id, "question_count": 20},
             format="json",
         )
         self.assertEqual(seventh.status_code, 200)
         seventh_ids = {item["id"] for item in seventh.data["questions"]}
-        self.assertEqual(len(seventh_ids), 10)
+        self.assertEqual(len(seventh_ids), 20)
         self.assertFalse(seventh_ids & excluded)
         self.assertEqual(
             seventh.data["distribution"]["excluded_previous_questions"],
