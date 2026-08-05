@@ -5,12 +5,23 @@ import '../models/exam_models.dart';
 const supportedMockQuestionCounts = [20, 50, 100];
 const tsnPercentFallbacks = [35, 25, 15];
 const tsnQuestionPercent = 35;
+const tsnBankMinPercent = 15;
 const recentExamExclusionLimit = 6;
 const categoryOnlySubjects = {'ACC HAN', 'ACS SUP HCM', 'SUP ACS HAN'};
 
 bool usesTsnRatio(String? subjectCode) {
   final code = (subjectCode ?? '').trim().toUpperCase();
   return !categoryOnlySubjects.map((item) => item.toUpperCase()).contains(code);
+}
+
+double tsnSharePercent(int tsnAvailable, int poolSize) {
+  if (poolSize <= 0) return 0;
+  return 100.0 * tsnAvailable / poolSize;
+}
+
+bool shouldApplyTsnSplit(int tsnAvailable, int poolSize) {
+  if (tsnAvailable <= 0) return false;
+  return tsnSharePercent(tsnAvailable, poolSize) >= tsnBankMinPercent;
 }
 
 int tsnTargetCount(int total, [int? percent]) {
@@ -24,11 +35,16 @@ int tsnTargetCount(int total, [int? percent]) {
   return (total * ratio / 100).round();
 }
 
-({int percent, int tsnCount, int otherCount}) resolveTsnPercent({
+/// Highest feasible TSN percent, or `null` to balance equally by category.
+({int percent, int tsnCount, int otherCount})? resolveTsnPercent({
   required int tsnAvailable,
   required int otherAvailable,
   required int total,
 }) {
+  final poolSize = tsnAvailable + otherAvailable;
+  if (!shouldApplyTsnSplit(tsnAvailable, poolSize)) {
+    return null;
+  }
   for (final percent in tsnPercentFallbacks) {
     final tsnCount = tsnTargetCount(total, percent);
     final otherCount = total - tsnCount;
@@ -36,11 +52,7 @@ int tsnTargetCount(int total, [int? percent]) {
       return (percent: percent, tsnCount: tsnCount, otherCount: otherCount);
     }
   }
-  final tried = tsnPercentFallbacks.map((value) => '$value%').join(', ');
-  throw StateError(
-    'Ngân hàng chỉ còn $tsnAvailable câu TSN và $otherAvailable câu ngoài TSN; '
-    'không đủ để tạo đề $total câu ở các tỷ lệ $tried.',
-  );
+  return null;
 }
 
 bool isTsnQuestion(QuestionItem question) {
@@ -76,10 +88,19 @@ List<QuestionItem> selectBalancedMockQuestions(
       otherAvailable: other.length,
       total: total,
     );
-    selected = [
-      ..._balancedTake(tsn, resolved.tsnCount, rng),
-      ..._balancedTake(other, resolved.otherCount, rng),
-    ];
+    if (resolved == null) {
+      if (eligible.length < total) {
+        throw StateError(
+          'Ngân hàng chỉ còn ${eligible.length} câu; cần $total câu.',
+        );
+      }
+      selected = _balancedTake(eligible, total, rng);
+    } else {
+      selected = [
+        ..._balancedTake(tsn, resolved.tsnCount, rng),
+        ..._balancedTake(other, resolved.otherCount, rng),
+      ];
+    }
   } else {
     if (eligible.length < total) {
       throw StateError(

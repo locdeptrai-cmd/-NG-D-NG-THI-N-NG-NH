@@ -19,9 +19,11 @@ void main() {
       }
     }
 
-    expect(resolveTsnPercent(tsnAvailable: 40, otherAvailable: 100, total: 100).percent, 35);
-    expect(resolveTsnPercent(tsnAvailable: 30, otherAvailable: 100, total: 100).percent, 25);
-    expect(resolveTsnPercent(tsnAvailable: 16, otherAvailable: 100, total: 100).percent, 15);
+    expect(resolveTsnPercent(tsnAvailable: 40, otherAvailable: 100, total: 100)!.percent, 35);
+    expect(resolveTsnPercent(tsnAvailable: 30, otherAvailable: 100, total: 100)!.percent, 25);
+    expect(resolveTsnPercent(tsnAvailable: 18, otherAvailable: 100, total: 100)!.percent, 15);
+    expect(resolveTsnPercent(tsnAvailable: 16, otherAvailable: 100, total: 100), isNull);
+    expect(resolveTsnPercent(tsnAvailable: 0, otherAvailable: 100, total: 100), isNull);
 
     for (final entry in {20: 7, 50: 18, 100: 35}.entries) {
       final selected = selectBalancedMockQuestions(
@@ -38,14 +40,14 @@ void main() {
     }
   });
 
-  test('falls back to lower TSN percent when pool is small', () {
+  test('falls back to lower TSN percent when pool is small but share >= 15%', () {
     final questions = <QuestionItem>[];
     var id = 1;
     for (var index = 0; index < 20; index++) {
       questions.add(_question(id++, 1, true));
     }
-    for (var category = 2; category <= 6; category++) {
-      for (var index = 0; index < 30; index++) {
+    for (var category = 2; category <= 5; category++) {
+      for (var index = 0; index < 25; index++) {
         questions.add(_question(id++, category, false));
       }
     }
@@ -56,6 +58,31 @@ void main() {
     );
     expect(selected, hasLength(100));
     expect(selected.where(isTsnQuestion), hasLength(15));
+  });
+
+  test('low TSN share uses equal category distribution', () {
+    final questions = <QuestionItem>[];
+    var id = 1;
+    for (var index = 0; index < 10; index++) {
+      questions.add(_question(id++, 1, true));
+    }
+    for (var category = 2; category <= 6; category++) {
+      for (var index = 0; index < 30; index++) {
+        questions.add(_question(id++, category, false));
+      }
+    }
+    expect(
+      resolveTsnPercent(tsnAvailable: 10, otherAvailable: 150, total: 100),
+      isNull,
+    );
+    final selected = selectBalancedMockQuestions(
+      questions,
+      100,
+      subjectCode: 'APS',
+      random: Random(11),
+    );
+    expect(selected, hasLength(100));
+    expect(selected.map((item) => item.id).toSet(), hasLength(100));
   });
 
   test('SUP and ACS SUP subjects skip TSN ratio and balance categories', () {

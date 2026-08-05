@@ -39,7 +39,9 @@ class OfflineQuestionSelectionTests(unittest.TestCase):
         self.assertEqual([tsn_target_count(n) for n in (20, 50, 100)], [7, 18, 35])
         self.assertEqual(resolve_tsn_percent(40, 100, 100), (35, 35, 65))
         self.assertEqual(resolve_tsn_percent(30, 100, 100), (25, 25, 75))
-        self.assertEqual(resolve_tsn_percent(16, 100, 100), (15, 15, 85))
+        self.assertEqual(resolve_tsn_percent(18, 100, 100), (15, 15, 85))
+        self.assertIsNone(resolve_tsn_percent(16, 100, 100))
+        self.assertIsNone(resolve_tsn_percent(0, 100, 100))
         for total, expected_tsn in ((20, 7), (50, 18), (100, 35)):
             selected = select_balanced_exam(
                 self.questions,
@@ -52,11 +54,12 @@ class OfflineQuestionSelectionTests(unittest.TestCase):
             self.assertEqual(len(tsn), expected_tsn)
 
     def test_tsn_ratio_falls_back_when_pool_is_small(self):
+        # 20 TSN + 100 other ≈ 16.7% share → still use 15% TSN split.
         small_pool = [
             item for item in self.questions if is_tsn_question(item)
         ][:20] + [
             item for item in self.questions if not is_tsn_question(item)
-        ]
+        ][:100]
         selected = select_balanced_exam(
             small_pool,
             100,
@@ -65,6 +68,24 @@ class OfflineQuestionSelectionTests(unittest.TestCase):
         )
         self.assertEqual(len(selected), 100)
         self.assertEqual(sum(1 for item in selected if is_tsn_question(item)), 15)
+
+    def test_low_tsn_share_uses_equal_categories(self):
+        low_pool = [
+            item for item in self.questions if is_tsn_question(item)
+        ][:10] + [
+            item for item in self.questions if not is_tsn_question(item)
+        ]
+        tsn_count = sum(1 for item in low_pool if is_tsn_question(item))
+        other_count = len(low_pool) - tsn_count
+        self.assertIsNone(resolve_tsn_percent(tsn_count, other_count, 100))
+        selected = select_balanced_exam(
+            low_pool,
+            100,
+            subject_code="APS",
+            rng=random.Random(11),
+        )
+        self.assertEqual(len(selected), 100)
+        self.assertEqual(len({item["id"] for item in selected}), 100)
 
     def test_category_only_subjects_skip_tsn_ratio(self):
         self.assertTrue(uses_tsn_ratio("SUP"))

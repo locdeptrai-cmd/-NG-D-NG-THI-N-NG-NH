@@ -46,9 +46,10 @@ class _PracticePageState extends ConsumerState<PracticePage> {
               ? 'ACC HAN / ACS SUP HCM / SUP ACS HAN: chia đều theo loại '
                   'kiến thức, không áp dụng tỷ lệ TSN/LTCS. Số câu 20/50/100. '
                   'Không lặp câu của 6 bài đã nộp gần nhất.'
-              : 'Ưu tiên 35% câu Tân Sơn Nhất (TSN/LTCS); thiếu thì hạ 25%, '
-                  'rồi 15%. Phần còn lại chia đều theo loại kiến thức. '
-                  'Số câu 20/50/100. Không lặp câu của 6 bài đã nộp gần nhất.',
+              : 'Nếu ngân hàng còn từ 15% câu TSN trở lên: ưu tiên 35%, thiếu '
+                  'thì hạ 25%, rồi 15%. Dưới 15% TSN hoặc hết TSN: chia đều '
+                  'theo loại kiến thức. Số câu 20/50/100. Không lặp câu của '
+                  '6 bài đã nộp gần nhất.',
           style: const TextStyle(color: Colors.white60),
         ),
         const SizedBox(height: 28),

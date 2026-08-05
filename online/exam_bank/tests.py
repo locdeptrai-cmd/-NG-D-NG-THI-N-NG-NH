@@ -430,7 +430,10 @@ class BalancedQuestionSelectionTests(TestCase):
         self.assertEqual([tsn_target_count(n) for n in (20, 50, 100)], [7, 18, 35])
         self.assertEqual(resolve_tsn_percent(40, 100, 100), (35, 35, 65))
         self.assertEqual(resolve_tsn_percent(30, 100, 100), (25, 25, 75))
-        self.assertEqual(resolve_tsn_percent(16, 100, 100), (15, 15, 85))
+        self.assertEqual(resolve_tsn_percent(18, 100, 100), (15, 15, 85))
+        self.assertIsNone(resolve_tsn_percent(16, 100, 100))
+        self.assertIsNone(resolve_tsn_percent(0, 100, 100))
+        self.assertIsNone(resolve_tsn_percent(5, 95, 100))
         for total, expected_tsn in ((20, 7), (50, 18), (100, 35)):
             selected, distribution = select_balanced_mock_questions(
                 self.subject,
@@ -448,13 +451,20 @@ class BalancedQuestionSelectionTests(TestCase):
                 self.assertLessEqual(max(counts.values()) - min(counts.values()), 1)
 
     def test_tsn_ratio_falls_back_when_pool_is_small(self):
-        # Keep only 20 TSN questions so 100-question papers must use 15%.
+        # Keep 20 TSN (~16.7% of 120) so 100-question papers use 15%, not equal.
         tsn_ids = list(
             Question.objects.filter(subject=self.subject, code__contains="-TSN-")
             .order_by("id")
             .values_list("id", flat=True)
         )
         Question.objects.filter(id__in=tsn_ids[20:]).delete()
+        general_ids = list(
+            Question.objects.filter(subject=self.subject, code__contains="-GENERAL-")
+            .order_by("id")
+            .values_list("id", flat=True)
+        )
+        # Cap non-TSN so TSN share stays >= 15%.
+        Question.objects.filter(id__in=general_ids[100:]).delete()
         selected, distribution = select_balanced_mock_questions(
             self.subject,
             100,
@@ -463,6 +473,24 @@ class BalancedQuestionSelectionTests(TestCase):
         self.assertEqual(len(selected), 100)
         self.assertEqual(distribution["tsn_percent"], 15)
         self.assertEqual(distribution["tsn_question_count"], 15)
+
+    def test_low_tsn_share_uses_equal_categories(self):
+        # 10 TSN / ~190 total ≈ 5% → skip TSN ratio, balance by category.
+        tsn_ids = list(
+            Question.objects.filter(subject=self.subject, code__contains="-TSN-")
+            .order_by("id")
+            .values_list("id", flat=True)
+        )
+        Question.objects.filter(id__in=tsn_ids[10:]).delete()
+        selected, distribution = select_balanced_mock_questions(
+            self.subject,
+            100,
+            rng=random.Random(11),
+        )
+        self.assertEqual(len(selected), 100)
+        self.assertEqual(distribution["tsn_percent"], 0)
+        self.assertEqual(distribution["strategy"], "equal_categories_no_tsn_ratio")
+        self.assertEqual(len({question.id for question in selected}), 100)
 
     def test_selected_exam_has_no_duplicate_question_ids(self):
         selected, _ = select_balanced_mock_questions(
