@@ -4,9 +4,13 @@ export PYTHONUTF8=1
 
 python manage.py setup_local_defaults --settings=config.settings
 
-# Sync only reference/question-bank data. Authentication data is never copied
-# from the development SQLite database into production.
-python manage.py sync_exam_bank_from_sqlite --settings=config.settings
+# Always force-sync question banks from the committed SQLite snapshot so
+# production picks up replaced APS/ADC/SUP banks even when totals look close.
+python manage.py sync_exam_bank_from_sqlite --force --settings=config.settings
 
 python manage.py shell --settings=config.settings -c \
-  "import sys; from exam_bank.models import Question, Answer; counts=(Question.objects.count(), Answer.objects.count()); print({'questions': counts[0], 'answers': counts[1]}); sys.exit(0 if all(counts) else 1)"
+  "import sys; from exam_bank.models import Question, Answer, Subject; \
+codes=('APS','ADC','SUP'); \
+counts={c: Question.objects.filter(subject__code=c, status='approved', is_locked_for_official_exam=False).exclude(code__startswith='ARCHIVED-').count() for c in codes}; \
+print({'questions': Question.objects.count(), 'answers': Answer.objects.count(), 'by_subject': counts}); \
+sys.exit(0 if all(counts.values()) else 1)"
