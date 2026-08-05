@@ -154,6 +154,16 @@ CORS_ALLOWED_ORIGINS = _env_csv(
     "DJANGO_CORS_ALLOWED_ORIGINS",
     "http://localhost:8080,http://127.0.0.1:8080,http://localhost:3000",
 )
+# django-cors-headers does not expand https://*.vercel.app wildcards in
+# CORS_ALLOWED_ORIGINS; keep those exact origins and match Vercel via regex.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    item.strip()
+    for item in os.getenv(
+        "DJANGO_CORS_ALLOWED_ORIGIN_REGEXES",
+        r"^https://.*\.vercel\.app$",
+    ).split(",")
+    if item.strip()
+]
 CSRF_TRUSTED_ORIGINS = _env_csv(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
     "http://localhost:8080,http://127.0.0.1:8080",

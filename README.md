@@ -78,6 +78,7 @@ flutter build apk --release
 - Windows EXE và Android APK được tạo trong `dist/` nhưng không commit vào Git.
 - iOS phải build trên macOS/Xcode hoặc workflow `Build iOS Offline App`.
 - PWA: https://locdeptrai-cmd.github.io/-NG-D-NG-THI-N-NG-NH/
+- PWA (Vercel): https://atc-exam-pwa.vercel.app/
 
 ## Tài liệu
 

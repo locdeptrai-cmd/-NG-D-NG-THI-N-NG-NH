@@ -1,0 +1,72 @@
+name: Deploy ATC Exam PWA to Vercel
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "flutter/**"
+      - "vercel.json"
+      - ".github/workflows/deploy-vercel.yml"
+
+concurrency:
+  group: vercel-pwa
+  cancel-in-progress: true
+
+env:
+  ATC_API_BASE_URL: ${{ vars.ATC_API_BASE_URL }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.VERCEL_TOKEN != '' }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: flutter
+        run: flutter pub get
+
+      - name: Generate Drift sources
+        working-directory: flutter
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Download SQLite WebAssembly
+        working-directory: flutter
+        run: |
+          curl -L --fail \
+            https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3.wasm \
+            -o web/sqlite3.wasm
+
+      - name: Compile Drift web worker
+        working-directory: flutter
+        run: dart compile js web/drift_worker.dart -o web/drift_worker.js
+
+      - name: Build web for Vercel
+        working-directory: flutter
+        shell: bash
+        run: |
+          api_base_url="${ATC_API_BASE_URL:-https://atc-exam-api.onrender.com/api}"
+          echo "Building PWA with ATC_API_BASE_URL=$api_base_url"
+          flutter build web --release --base-href "/" \
+            --dart-define="ATC_API_BASE_URL=$api_base_url"
+          cp ../vercel.json build/web/vercel.json
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Deploy to Vercel
+        working-directory: flutter/build/web
+        run: |
+          vercel deploy --prod --yes --token="${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
