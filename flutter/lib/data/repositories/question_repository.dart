@@ -4,6 +4,7 @@ import '../../core/api/api_client.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/offline_db_seeder.dart';
 import '../models/exam_models.dart';
+import 'exam_history_rotation.dart';
 import 'question_selector.dart';
 
 class QuestionRepository {
@@ -67,9 +68,22 @@ class QuestionRepository {
     return _database.getPackages();
   }
 
+  Future<List<QuestionPackageSummary>> packagesNeedingUpdate() async {
+    final packages = await getPackages();
+    return packages.where((item) => item.needsUpdate).toList();
+  }
+
   Future<void> downloadPackage(String packageId) async {
     final package = await _api.downloadPackage(packageId);
     await _database.replacePackage(package);
+  }
+
+  Future<int> downloadOutdatedPackages() async {
+    final outdated = await packagesNeedingUpdate();
+    for (final package in outdated) {
+      await downloadPackage(package.packageId);
+    }
+    return outdated.length;
   }
 
   Future<void> removePackage(String packageId) {
@@ -84,20 +98,55 @@ class QuestionRepository {
     if (available.isEmpty) {
       throw StateError('Gói ${package.subject.code} chưa được tải.');
     }
-    final excluded =
+
+    final bankIds = available.map((item) => item.id).toSet();
+    var allUsed =
+        await _database.allCompletedQuestionIds(package.subject.code);
+    var excluded =
         await _database.recentCompletedQuestionIds(package.subject.code);
-    final selected = selectBalancedMockQuestions(
-      available,
-      questionCount,
-      excludedQuestionIds: excluded,
+    var eligibleCount =
+        available.where((item) => !excluded.contains(item.id)).length;
+
+    if (shouldClearExamHistory(
       subjectCode: package.subject.code,
-    );
-    return PracticeSession(
-      id: 'local-${_uuid.v4()}',
-      subject: package.subject,
-      startedAt: DateTime.now().toUtc(),
-      questions: selected,
-    );
+      bankQuestionIds: bankIds,
+      allUsedQuestionIds: allUsed,
+      eligibleCount: eligibleCount,
+      questionCount: questionCount,
+    )) {
+      await _database.clearCompletedAttemptsForSubject(package.subject.code);
+      excluded = {};
+    }
+
+    try {
+      final selected = selectBalancedMockQuestions(
+        available,
+        questionCount,
+        excludedQuestionIds: excluded,
+        subjectCode: package.subject.code,
+      );
+      return PracticeSession(
+        id: 'local-${_uuid.v4()}',
+        subject: package.subject,
+        startedAt: DateTime.now().toUtc(),
+        questions: selected,
+      );
+    } on StateError {
+      if (excluded.isEmpty && allUsed.isEmpty) rethrow;
+      await _database.clearCompletedAttemptsForSubject(package.subject.code);
+      final selected = selectBalancedMockQuestions(
+        available,
+        questionCount,
+        excludedQuestionIds: const {},
+        subjectCode: package.subject.code,
+      );
+      return PracticeSession(
+        id: 'local-${_uuid.v4()}',
+        subject: package.subject,
+        startedAt: DateTime.now().toUtc(),
+        questions: selected,
+      );
+    }
   }
 
   Future<void> completePractice(

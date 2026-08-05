@@ -143,6 +143,54 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
+  static String downloadedVersionKey(String packageId) =>
+      'pkg_downloaded_version:$packageId';
+
+  static String downloadedChecksumKey(String packageId) =>
+      'pkg_downloaded_checksum:$packageId';
+
+  Future<void> putSetting(String key, String value) async {
+    await into(appSettings).insertOnConflictUpdate(
+      AppSettingsCompanion.insert(key: key, value: value),
+    );
+  }
+
+  Future<String?> getSetting(String key) async {
+    final row = await (select(appSettings)
+          ..where((item) => item.key.equals(key)))
+        .getSingleOrNull();
+    return row?.value;
+  }
+
+  Future<void> deleteSetting(String key) async {
+    await (delete(appSettings)..where((item) => item.key.equals(key))).go();
+  }
+
+  Future<void> rememberDownloadedPackageMeta({
+    required String packageId,
+    required int version,
+    required String checksum,
+  }) async {
+    await putSetting(downloadedVersionKey(packageId), '$version');
+    await putSetting(downloadedChecksumKey(packageId), checksum);
+  }
+
+  Future<void> clearDownloadedPackageMeta(String packageId) async {
+    await deleteSetting(downloadedVersionKey(packageId));
+    await deleteSetting(downloadedChecksumKey(packageId));
+  }
+
+  Future<({int? version, String? checksum})> downloadedPackageMeta(
+    String packageId,
+  ) async {
+    final versionRaw = await getSetting(downloadedVersionKey(packageId));
+    final checksum = await getSetting(downloadedChecksumKey(packageId));
+    return (
+      version: int.tryParse(versionRaw ?? ''),
+      checksum: checksum,
+    );
+  }
+
   Future<void> cacheCatalog(
     List<SubjectSummary> subjects,
     List<QuestionPackageSummary> packages,
@@ -253,6 +301,11 @@ class AppDatabase extends _$AppDatabase {
       await into(localPackages).insertOnConflictUpdate(
         _packageCompanion(bundle, downloadedAt: DateTime.now().toUtc()),
       );
+      await rememberDownloadedPackageMeta(
+        packageId: bundle.packageId,
+        version: bundle.version,
+        checksum: bundle.checksum,
+      );
 
       await batch((batch) {
         for (final question in bundle.questions) {
@@ -295,27 +348,32 @@ class AppDatabase extends _$AppDatabase {
     final rows = await (select(localPackages)
           ..orderBy([(row) => OrderingTerm.asc(row.subjectCode)]))
         .get();
-    return rows
-        .map(
-          (row) => QuestionPackageSummary(
-            packageId: row.packageId,
-            name: row.name,
-            version: row.version,
-            checksum: row.checksum,
-            minimumAppVersion: row.minimumAppVersion,
-            updatedAt: row.updatedAt,
-            sizeBytes: row.sizeBytes,
+    final packages = <QuestionPackageSummary>[];
+    for (final row in rows) {
+      final meta = await downloadedPackageMeta(row.packageId);
+      packages.add(
+        QuestionPackageSummary(
+          packageId: row.packageId,
+          name: row.name,
+          version: row.version,
+          checksum: row.checksum,
+          minimumAppVersion: row.minimumAppVersion,
+          updatedAt: row.updatedAt,
+          sizeBytes: row.sizeBytes,
+          questionCount: row.questionCount,
+          downloadedAt: row.downloadedAt,
+          downloadedVersion: meta.version,
+          downloadedChecksum: meta.checksum,
+          subject: SubjectSummary(
+            id: row.subjectId,
+            code: row.subjectCode,
+            name: row.subjectCode,
             questionCount: row.questionCount,
-            downloadedAt: row.downloadedAt,
-            subject: SubjectSummary(
-              id: row.subjectId,
-              code: row.subjectCode,
-              name: row.subjectCode,
-              questionCount: row.questionCount,
-            ),
           ),
-        )
-        .toList();
+        ),
+      );
+    }
+    return packages;
   }
 
   Future<List<SubjectSummary>> getSubjects() async {
@@ -391,6 +449,7 @@ class AppDatabase extends _$AppDatabase {
       await (update(localPackages)
             ..where((row) => row.packageId.equals(packageId)))
           .write(const LocalPackagesCompanion(downloadedAt: Value(null)));
+      await clearDownloadedPackageMeta(packageId);
     });
   }
 
@@ -486,6 +545,21 @@ class AppDatabase extends _$AppDatabase {
           ..orderBy([(item) => OrderingTerm.desc(item.completedAt)])
           ..limit(limit))
         .get();
+    return _questionIdsFromAttempts(rows);
+  }
+
+  Future<Set<int>> allCompletedQuestionIds(String subjectCode) async {
+    final rows = await (select(localAttempts)
+          ..where(
+            (item) =>
+                item.subjectCode.equals(subjectCode) &
+                item.completedAt.isNotNull(),
+          ))
+        .get();
+    return _questionIdsFromAttempts(rows);
+  }
+
+  Set<int> _questionIdsFromAttempts(List<LocalAttempt> rows) {
     final excluded = <int>{};
     for (final row in rows) {
       try {
@@ -500,6 +574,17 @@ class AppDatabase extends _$AppDatabase {
       }
     }
     return excluded;
+  }
+
+  /// Drop completed practice history for [subjectCode] so a fresh cycle can start.
+  Future<int> clearCompletedAttemptsForSubject(String subjectCode) async {
+    return (delete(localAttempts)
+          ..where(
+            (item) =>
+                item.subjectCode.equals(subjectCode) &
+                item.completedAt.isNotNull(),
+          ))
+        .go();
   }
 
   Future<void> cacheUser(UserProfile profile) async {

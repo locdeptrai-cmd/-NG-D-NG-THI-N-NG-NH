@@ -61,6 +61,8 @@ class QuestionPackageSummary {
     required this.questionCount,
     required this.subject,
     this.downloadedAt,
+    this.downloadedVersion,
+    this.downloadedChecksum,
   });
 
   final String packageId;
@@ -73,8 +75,20 @@ class QuestionPackageSummary {
   final int questionCount;
   final SubjectSummary subject;
   final DateTime? downloadedAt;
+  final int? downloadedVersion;
+  final String? downloadedChecksum;
 
   bool get isDownloaded => downloadedAt != null;
+
+  /// Local payload is behind the catalog version advertised by the server.
+  bool get needsUpdate {
+    if (!isDownloaded) return false;
+    final localVersion = downloadedVersion;
+    final localChecksum = downloadedChecksum;
+    // Packages downloaded before fingerprint tracking need one sync pass.
+    if (localVersion == null || localChecksum == null) return true;
+    return localVersion != version || localChecksum != checksum;
+  }
 
   factory QuestionPackageSummary.fromJson(Map<String, dynamic> json) {
     final subject = SubjectSummary.fromJson({
@@ -91,6 +105,33 @@ class QuestionPackageSummary {
       sizeBytes: (json['size_bytes'] as num?)?.toInt() ?? 0,
       questionCount: (json['question_count'] as num?)?.toInt() ?? 0,
       subject: subject,
+    );
+  }
+
+  QuestionPackageSummary copyWith({
+    int? version,
+    String? checksum,
+    DateTime? updatedAt,
+    int? sizeBytes,
+    int? questionCount,
+    DateTime? downloadedAt,
+    int? downloadedVersion,
+    String? downloadedChecksum,
+    bool clearDownloadedAt = false,
+  }) {
+    return QuestionPackageSummary(
+      packageId: packageId,
+      name: name,
+      version: version ?? this.version,
+      checksum: checksum ?? this.checksum,
+      minimumAppVersion: minimumAppVersion,
+      updatedAt: updatedAt ?? this.updatedAt,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
+      questionCount: questionCount ?? this.questionCount,
+      subject: subject,
+      downloadedAt: clearDownloadedAt ? null : downloadedAt ?? this.downloadedAt,
+      downloadedVersion: downloadedVersion ?? this.downloadedVersion,
+      downloadedChecksum: downloadedChecksum ?? this.downloadedChecksum,
     );
   }
 }

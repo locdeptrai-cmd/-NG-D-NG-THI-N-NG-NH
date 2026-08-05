@@ -21,6 +21,8 @@ class WorkspaceShell extends ConsumerStatefulWidget {
 
 class _WorkspaceShellState extends ConsumerState<WorkspaceShell> {
   int index = 0;
+  bool _updateDialogVisible = false;
+  bool _promptScheduled = false;
 
   static const destinations = [
     (Icons.space_dashboard_outlined, Icons.space_dashboard, 'Tổng quan'),
@@ -41,6 +43,72 @@ class _WorkspaceShellState extends ConsumerState<WorkspaceShell> {
       ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(appControllerProvider).packageUpdatePromptPending) {
+        _scheduleUpdatePrompt();
+      }
+    });
+  }
+
+  Future<void> _promptPackageUpdates(AppState state) async {
+    if (!mounted || _updateDialogVisible) return;
+    final outdated = state.packagesNeedingUpdate;
+    if (outdated.isEmpty) {
+      ref.read(appControllerProvider.notifier).dismissPackageUpdatePrompt();
+      return;
+    }
+    _updateDialogVisible = true;
+    final codes = outdated.map((item) => item.subject.code).join(', ');
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Có phiên bản ngân hàng mới'),
+        content: Text(
+          'Phát hiện cập nhật cho: $codes.\n'
+          'Đồng bộ ngay để dùng bộ đề mới trên thiết bị?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Để sau'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Đồng bộ ngay'),
+          ),
+        ],
+      ),
+    );
+    _updateDialogVisible = false;
+    if (!mounted) return;
+    final controller = ref.read(appControllerProvider.notifier);
+    if (confirmed == true) {
+      final ok = await controller.syncOutdatedPackages();
+      if (ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã đồng bộ ngân hàng câu hỏi mới.')),
+        );
+        setState(() => index = 1);
+      }
+    } else {
+      controller.dismissPackageUpdatePrompt();
+    }
+  }
+
+  void _scheduleUpdatePrompt() {
+    if (_updateDialogVisible || _promptScheduled) return;
+    _promptScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _promptScheduled = false;
+      _promptPackageUpdates(ref.read(appControllerProvider));
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = ref.watch(appControllerProvider);
     ref.listen(appControllerProvider.select((value) => value.error),
@@ -50,6 +118,12 @@ class _WorkspaceShellState extends ConsumerState<WorkspaceShell> {
         SnackBar(content: Text(error)),
       );
     });
+    ref.listen(
+      appControllerProvider.select((value) => value.packageUpdatePromptPending),
+      (previous, pending) {
+        if (pending == true) _scheduleUpdatePrompt();
+      },
+    );
     return Scaffold(
       body: AtcBackdrop(
         imageAsset: 'assets/images/home-bg.png',

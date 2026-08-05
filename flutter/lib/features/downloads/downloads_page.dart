@@ -150,10 +150,14 @@ class _PackageRow extends StatelessWidget {
                 const SizedBox(height: 7),
                 Text(
                   package.isDownloaded
-                      ? 'Đã tải trên thiết bị'
+                      ? (package.needsUpdate
+                          ? 'Có phiên bản mới — cần đồng bộ'
+                          : 'Đã tải trên thiết bị')
                       : 'Chưa có dữ liệu cục bộ',
                   style: TextStyle(
-                    color: package.isDownloaded ? atcCyan : atcWarning,
+                    color: package.isDownloaded
+                        ? (package.needsUpdate ? atcWarning : atcCyan)
+                        : atcWarning,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -169,7 +173,11 @@ class _PackageRow extends StatelessWidget {
                         ? Icons.system_update_alt
                         : Icons.download,
                   ),
-                  label: Text(package.isDownloaded ? 'Cập nhật' : 'Tải'),
+                  label: Text(
+                    package.needsUpdate
+                        ? 'Đồng bộ'
+                        : (package.isDownloaded ? 'Cập nhật' : 'Tải'),
+                  ),
                 ),
                 if (package.isDownloaded)
                   IconButton(

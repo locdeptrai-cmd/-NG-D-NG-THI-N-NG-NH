@@ -35,6 +35,8 @@ class AppState {
     this.subjects = const [],
     this.packages = const [],
     this.pendingSync = 0,
+    this.packagesNeedingUpdate = const [],
+    this.packageUpdatePromptPending = false,
     this.error,
   });
 
@@ -47,6 +49,8 @@ class AppState {
   final List<SubjectSummary> subjects;
   final List<QuestionPackageSummary> packages;
   final int pendingSync;
+  final List<QuestionPackageSummary> packagesNeedingUpdate;
+  final bool packageUpdatePromptPending;
   final String? error;
 
   AppState copyWith({
@@ -60,6 +64,8 @@ class AppState {
     List<SubjectSummary>? subjects,
     List<QuestionPackageSummary>? packages,
     int? pendingSync,
+    List<QuestionPackageSummary>? packagesNeedingUpdate,
+    bool? packageUpdatePromptPending,
     String? error,
     bool clearError = false,
   }) {
@@ -73,6 +79,10 @@ class AppState {
       subjects: subjects ?? this.subjects,
       packages: packages ?? this.packages,
       pendingSync: pendingSync ?? this.pendingSync,
+      packagesNeedingUpdate:
+          packagesNeedingUpdate ?? this.packagesNeedingUpdate,
+      packageUpdatePromptPending:
+          packageUpdatePromptPending ?? this.packageUpdatePromptPending,
       error: clearError ? null : error ?? this.error,
     );
   }
@@ -108,7 +118,7 @@ class AppController extends StateNotifier<AppState> {
     _connectivitySubscription =
         Connectivity().onConnectivityChanged.listen((_) => checkOnline());
     if (online && hasSession) {
-      await refresh();
+      await refresh(checkPackageUpdates: true);
       await syncPending();
     }
   }
@@ -119,10 +129,12 @@ class AppController extends StateNotifier<AppState> {
       _repository.getPackages(),
       _repository.pendingSyncCount(),
     ]);
+    final packages = results[1] as List<QuestionPackageSummary>;
     state = state.copyWith(
       subjects: results[0] as List<SubjectSummary>,
-      packages: results[1] as List<QuestionPackageSummary>,
+      packages: packages,
       pendingSync: results[2] as int,
+      packagesNeedingUpdate: packages.where((item) => item.needsUpdate).toList(),
     );
   }
 
@@ -139,12 +151,16 @@ class AppController extends StateNotifier<AppState> {
     try {
       final user = await _repository.login(username, password);
       await _loadLocal();
+      final outdated =
+          state.packages.where((item) => item.needsUpdate).toList();
       state = state.copyWith(
         busy: false,
         online: true,
         authenticated: true,
         offlineAccess: false,
         user: user,
+        packagesNeedingUpdate: outdated,
+        packageUpdatePromptPending: outdated.isNotEmpty,
       );
       await syncPending();
       return true;
@@ -169,13 +185,21 @@ class AppController extends StateNotifier<AppState> {
     return true;
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh({bool checkPackageUpdates = false}) async {
     if (!state.online || !state.authenticated) return;
     state = state.copyWith(busy: true, clearError: true);
     try {
       await _repository.refreshCatalog();
       await _loadLocal();
-      state = state.copyWith(busy: false);
+      final outdated =
+          state.packages.where((item) => item.needsUpdate).toList();
+      state = state.copyWith(
+        busy: false,
+        packagesNeedingUpdate: outdated,
+        packageUpdatePromptPending: checkPackageUpdates && outdated.isNotEmpty
+            ? true
+            : state.packageUpdatePromptPending && outdated.isNotEmpty,
+      );
     } catch (_) {
       state = state.copyWith(
         busy: false,
@@ -184,12 +208,42 @@ class AppController extends StateNotifier<AppState> {
     }
   }
 
+  void dismissPackageUpdatePrompt() {
+    state = state.copyWith(packageUpdatePromptPending: false);
+  }
+
+  Future<bool> syncOutdatedPackages() async {
+    if (!state.online || !state.authenticated) return false;
+    state = state.copyWith(busy: true, clearError: true);
+    try {
+      await _repository.downloadOutdatedPackages();
+      await _loadLocal();
+      state = state.copyWith(
+        busy: false,
+        packagesNeedingUpdate: const [],
+        packageUpdatePromptPending: false,
+      );
+      return true;
+    } catch (_) {
+      state = state.copyWith(
+        busy: false,
+        packageUpdatePromptPending: false,
+        error: 'Đồng bộ gói câu hỏi thất bại. Hãy thử lại ở mục Tải dữ liệu.',
+      );
+      return false;
+    }
+  }
+
   Future<void> downloadPackage(String packageId) async {
     state = state.copyWith(busy: true, clearError: true);
     try {
       await _repository.downloadPackage(packageId);
       await _loadLocal();
-      state = state.copyWith(busy: false);
+      state = state.copyWith(
+        busy: false,
+        packagesNeedingUpdate:
+            state.packages.where((item) => item.needsUpdate).toList(),
+      );
     } catch (_) {
       state = state.copyWith(
         busy: false,
@@ -272,6 +326,8 @@ class AppController extends StateNotifier<AppState> {
       authenticated: false,
       offlineAccess: false,
       clearUser: true,
+      packagesNeedingUpdate: const [],
+      packageUpdatePromptPending: false,
     );
   }
 
