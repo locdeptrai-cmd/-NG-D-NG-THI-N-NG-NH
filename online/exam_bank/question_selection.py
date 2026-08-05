@@ -10,9 +10,13 @@ from .models import Attempt, PracticeAttempt, Question
 
 
 ALLOWED_MOCK_QUESTION_COUNTS = (20, 50, 100)
-TSN_PERCENT = 35
-# These rating banks skip the 35% TSN/LTCS split and only balance by knowledge category.
-CATEGORY_ONLY_SUBJECTS = frozenset({"SUP", "ACS SUP HCM", "SUP ACS HAN"})
+# Prefer 35% TSN; if the remaining bank is too small, step down to 25% then 15%.
+TSN_PERCENT_FALLBACKS = (35, 25, 15)
+TSN_PERCENT = TSN_PERCENT_FALLBACKS[0]
+# These rating banks skip the TSN/LTCS split and only balance by knowledge category.
+CATEGORY_ONLY_SUBJECTS = frozenset(
+    {"ACC HAN", "ACS SUP HCM", "SUP ACS HAN"}
+)
 # Skip questions that appeared in any of the user's last N completed
 # practice/mock exams for the same subject.
 RECENT_EXAM_EXCLUSION_LIMIT = 6
@@ -54,11 +58,31 @@ def is_tsn_question(question):
     )
 
 
-def tsn_target_count(total_questions):
+def tsn_target_count(total_questions, percent=None):
     if total_questions not in ALLOWED_MOCK_QUESTION_COUNTS:
         allowed = ", ".join(str(value) for value in ALLOWED_MOCK_QUESTION_COUNTS)
         raise QuestionSelectionError(f"Số câu chỉ được chọn: {allowed}.")
-    return int(total_questions * TSN_PERCENT / 100 + 0.5)
+    ratio = TSN_PERCENT if percent is None else percent
+    if ratio not in TSN_PERCENT_FALLBACKS:
+        raise QuestionSelectionError(
+            f"Tỷ lệ TSN không hợp lệ: {ratio}. Cho phép: "
+            + ", ".join(str(value) for value in TSN_PERCENT_FALLBACKS)
+        )
+    return int(total_questions * ratio / 100 + 0.5)
+
+
+def resolve_tsn_percent(tsn_available, other_available, total_questions):
+    """Pick the highest feasible TSN percent from the fallback ladder."""
+    for percent in TSN_PERCENT_FALLBACKS:
+        tsn_need = tsn_target_count(total_questions, percent)
+        other_need = total_questions - tsn_need
+        if tsn_available >= tsn_need and other_available >= other_need:
+            return percent, tsn_need, other_need
+    tried = ", ".join(f"{value}%" for value in TSN_PERCENT_FALLBACKS)
+    raise QuestionSelectionError(
+        f"Ngân hàng chỉ còn {tsn_available} câu TSN và {other_available} câu ngoài TSN; "
+        f"không đủ để tạo đề {total_questions} câu ở các tỷ lệ {tried}."
+    )
 
 
 def _category_key(question):
@@ -129,29 +153,20 @@ def select_balanced_mock_questions(
         pool.append(question)
 
     if apply_tsn:
-        tsn_count = tsn_target_count(total_questions)
-        other_count = total_questions - tsn_count
         tsn_pool = [question for question in pool if is_tsn_question(question)]
         other_pool = [
             question for question in pool if not is_tsn_question(question)
         ]
-        if len(tsn_pool) < tsn_count:
-            raise QuestionSelectionError(
-                f"Ngân hàng {subject.code} chỉ còn {len(tsn_pool)} câu TSN; "
-                f"cần {tsn_count} câu để đạt tỷ lệ {TSN_PERCENT}%."
-            )
-        if len(other_pool) < other_count:
-            raise QuestionSelectionError(
-                f"Ngân hàng {subject.code} chỉ còn {len(other_pool)} câu ngoài TSN; "
-                f"cần {other_count} câu để đạt tỷ lệ {100 - TSN_PERCENT}%."
-            )
+        percent, tsn_count, other_count = resolve_tsn_percent(
+            len(tsn_pool), len(other_pool), total_questions
+        )
         selected_tsn = _balanced_take(tsn_pool, tsn_count, rng)
         selected_other = _balanced_take(other_pool, other_count, rng)
         selected = [*selected_tsn, *selected_other]
         distribution = {
             "total_questions": total_questions,
-            "strategy": "tsn_35_balanced_categories",
-            "tsn_percent": TSN_PERCENT,
+            "strategy": f"tsn_{percent}_balanced_categories",
+            "tsn_percent": percent,
             "tsn_question_count": len(selected_tsn),
             "other_question_count": len(selected_other),
             "tsn_categories": dict(

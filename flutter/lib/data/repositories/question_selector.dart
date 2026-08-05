@@ -3,20 +3,44 @@ import 'dart:math';
 import '../models/exam_models.dart';
 
 const supportedMockQuestionCounts = [20, 50, 100];
+const tsnPercentFallbacks = [35, 25, 15];
 const tsnQuestionPercent = 35;
 const recentExamExclusionLimit = 6;
-const categoryOnlySubjects = {'SUP', 'ACS SUP HCM', 'SUP ACS HAN'};
+const categoryOnlySubjects = {'ACC HAN', 'ACS SUP HCM', 'SUP ACS HAN'};
 
 bool usesTsnRatio(String? subjectCode) {
   final code = (subjectCode ?? '').trim().toUpperCase();
   return !categoryOnlySubjects.map((item) => item.toUpperCase()).contains(code);
 }
 
-int tsnTargetCount(int total) {
+int tsnTargetCount(int total, [int? percent]) {
   if (!supportedMockQuestionCounts.contains(total)) {
     throw ArgumentError('Số câu chỉ được chọn 20, 50 hoặc 100.');
   }
-  return (total * tsnQuestionPercent / 100).round();
+  final ratio = percent ?? tsnQuestionPercent;
+  if (!tsnPercentFallbacks.contains(ratio)) {
+    throw ArgumentError('Tỷ lệ TSN không hợp lệ: $ratio.');
+  }
+  return (total * ratio / 100).round();
+}
+
+({int percent, int tsnCount, int otherCount}) resolveTsnPercent({
+  required int tsnAvailable,
+  required int otherAvailable,
+  required int total,
+}) {
+  for (final percent in tsnPercentFallbacks) {
+    final tsnCount = tsnTargetCount(total, percent);
+    final otherCount = total - tsnCount;
+    if (tsnAvailable >= tsnCount && otherAvailable >= otherCount) {
+      return (percent: percent, tsnCount: tsnCount, otherCount: otherCount);
+    }
+  }
+  final tried = tsnPercentFallbacks.map((value) => '$value%').join(', ');
+  throw StateError(
+    'Ngân hàng chỉ còn $tsnAvailable câu TSN và $otherAvailable câu ngoài TSN; '
+    'không đủ để tạo đề $total câu ở các tỷ lệ $tried.',
+  );
 }
 
 bool isTsnQuestion(QuestionItem question) {
@@ -45,26 +69,16 @@ List<QuestionItem> selectBalancedMockQuestions(
 
   final List<QuestionItem> selected;
   if (usesTsnRatio(subjectCode)) {
-    final tsnCount = tsnTargetCount(total);
-    final otherCount = total - tsnCount;
     final tsn = eligible.where(isTsnQuestion).toList();
     final other = eligible.where((question) => !isTsnQuestion(question)).toList();
-
-    if (tsn.length < tsnCount) {
-      throw StateError(
-        'Ngân hàng chỉ còn ${tsn.length} câu TSN; cần $tsnCount câu '
-        'để đạt tỷ lệ $tsnQuestionPercent%.',
-      );
-    }
-    if (other.length < otherCount) {
-      throw StateError(
-        'Ngân hàng chỉ còn ${other.length} câu ngoài TSN; '
-        'cần $otherCount câu.',
-      );
-    }
+    final resolved = resolveTsnPercent(
+      tsnAvailable: tsn.length,
+      otherAvailable: other.length,
+      total: total,
+    );
     selected = [
-      ..._balancedTake(tsn, tsnCount, rng),
-      ..._balancedTake(other, otherCount, rng),
+      ..._balancedTake(tsn, resolved.tsnCount, rng),
+      ..._balancedTake(other, resolved.otherCount, rng),
     ];
   } else {
     if (eligible.length < total) {

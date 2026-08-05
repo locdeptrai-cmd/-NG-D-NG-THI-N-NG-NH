@@ -39,6 +39,7 @@ from .question_selection import (
     RECENT_EXAM_EXCLUSION_LIMIT,
     recent_completed_question_ids,
     select_balanced_mock_questions,
+    resolve_tsn_percent,
     tsn_target_count,
     uses_tsn_ratio,
 )
@@ -212,6 +213,7 @@ class XlsxImportTests(TestCase):
     def test_xlsx_numeric_option_headers_one_to_four(self):
         class Worksheet:
             max_row = 2
+            title = "Sheet1"
 
             def iter_rows(self, **kwargs):
                 return iter(
@@ -222,7 +224,9 @@ class XlsxImportTests(TestCase):
                 )
 
         class Workbook:
-            active = Worksheet()
+            def __init__(self):
+                self.active = Worksheet()
+                self.worksheets = [self.active]
 
             def close(self):
                 pass
@@ -234,6 +238,65 @@ class XlsxImportTests(TestCase):
         self.assertEqual(records[0]["A"], "Prime minister")
         self.assertEqual(records[0]["ans"], "A")
         self.assertEqual(records[0]["subject_codes"], ["ACC HAN"])
+
+    def test_xlsx_reads_all_sheets_and_vietnamese_tsn_headers(self):
+        class GeneralSheet:
+            max_row = 2
+            title = "LTC-ADC"
+
+            def iter_rows(self, **kwargs):
+                return iter(
+                    [
+                        ("QUESTION", "1", "2", "3", "4", "ANS", "RATING"),
+                        ("Runway colour?", "Yellow", "White", "Red", "Blue", "2", "ADC"),
+                    ]
+                )
+
+        class TsnSheet:
+            max_row = 2
+            title = "LTCS Tân Sơn Nhất"
+
+            def iter_rows(self, **kwargs):
+                return iter(
+                    [
+                        (
+                            "TT",
+                            "Nội dung câu hỏi (*)",
+                            "Phương án lựa chọn 1",
+                            "Phương án lựa chọn 2",
+                            "Phương án lựa chọn 3",
+                            "Phương án lựa chọn 4",
+                            "Đáp án ",
+                        ),
+                        (
+                            1,
+                            "Airspace in TSN CTR is classified as?",
+                            "Class A",
+                            "Class B",
+                            "Class C",
+                            "Class D",
+                            3,
+                        ),
+                    ]
+                )
+
+        class Workbook:
+            def __init__(self):
+                self.active = GeneralSheet()
+                self.worksheets = [GeneralSheet(), TsnSheet()]
+
+            def close(self):
+                pass
+
+        with patch("openpyxl.load_workbook", return_value=Workbook()):
+            records = _read_xlsx_records(Path("BỘ ĐỀ ADC MỚI.xlsx"), "ADC")
+
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[0]["ans"], "B")
+        self.assertEqual(records[1]["ans"], "C")
+        self.assertIn("Tan Son Nhat", records[1]["topic"])
+        self.assertEqual(records[0]["row_no"], 1)
+        self.assertEqual(records[1]["row_no"], 2)
 
     def test_rating_sup_acs_han_maps_to_dedicated_group(self):
         self.assertIn("SUP ACS HAN", SUBJECT_GROUPS)
@@ -365,6 +428,9 @@ class BalancedQuestionSelectionTests(TestCase):
 
     def test_tsn_ratio_and_categories_are_balanced_for_supported_sizes(self):
         self.assertEqual([tsn_target_count(n) for n in (20, 50, 100)], [7, 18, 35])
+        self.assertEqual(resolve_tsn_percent(40, 100, 100), (35, 35, 65))
+        self.assertEqual(resolve_tsn_percent(30, 100, 100), (25, 25, 75))
+        self.assertEqual(resolve_tsn_percent(16, 100, 100), (15, 15, 85))
         for total, expected_tsn in ((20, 7), (50, 18), (100, 35)):
             selected, distribution = select_balanced_mock_questions(
                 self.subject,
@@ -376,9 +442,27 @@ class BalancedQuestionSelectionTests(TestCase):
             self.assertEqual(len(selected), total)
             self.assertEqual(len(tsn), expected_tsn)
             self.assertEqual(distribution["tsn_question_count"], expected_tsn)
+            self.assertEqual(distribution["tsn_percent"], 35)
             for part in (tsn, other):
                 counts = Counter(question.category_id for question in part)
                 self.assertLessEqual(max(counts.values()) - min(counts.values()), 1)
+
+    def test_tsn_ratio_falls_back_when_pool_is_small(self):
+        # Keep only 20 TSN questions so 100-question papers must use 15%.
+        tsn_ids = list(
+            Question.objects.filter(subject=self.subject, code__contains="-TSN-")
+            .order_by("id")
+            .values_list("id", flat=True)
+        )
+        Question.objects.filter(id__in=tsn_ids[20:]).delete()
+        selected, distribution = select_balanced_mock_questions(
+            self.subject,
+            100,
+            rng=random.Random(3),
+        )
+        self.assertEqual(len(selected), 100)
+        self.assertEqual(distribution["tsn_percent"], 15)
+        self.assertEqual(distribution["tsn_question_count"], 15)
 
     def test_selected_exam_has_no_duplicate_question_ids(self):
         selected, _ = select_balanced_mock_questions(
@@ -390,7 +474,10 @@ class BalancedQuestionSelectionTests(TestCase):
         self.assertEqual(len(ids), len(set(ids)))
 
     def test_acs_sup_subjects_skip_tsn_ratio_and_balance_categories(self):
-        for code in ("SUP", "ACS SUP HCM", "SUP ACS HAN"):
+        self.assertTrue(uses_tsn_ratio("SUP"))
+        self.assertTrue(uses_tsn_ratio("APS"))
+        self.assertTrue(uses_tsn_ratio("ADC"))
+        for code in ("ACC HAN", "ACS SUP HCM", "SUP ACS HAN"):
             self.assertFalse(uses_tsn_ratio(code))
             subject, _ = Subject.objects.get_or_create(
                 code=code, defaults={"name": code}

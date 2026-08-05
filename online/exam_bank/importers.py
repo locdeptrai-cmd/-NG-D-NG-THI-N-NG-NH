@@ -86,6 +86,8 @@ def _compact_spaces(v):
 
 def _header_key(v):
     text = _normalize(v)
+    # Vietnamese đ/Đ is not a combining-mark letter; map it before NFD strip.
+    text = text.replace("đ", "d").replace("Đ", "D")
     text = unicodedata.normalize("NFD", text)
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
     text = re.sub(r"\s+", " ", text).strip().upper()
@@ -110,7 +112,8 @@ def _classify_category(topic, question):
 
 
 def _source_prefix(path: Path):
-    text = unicodedata.normalize("NFD", path.stem)
+    text = path.stem.replace("đ", "d").replace("Đ", "D")
+    text = unicodedata.normalize("NFD", text)
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
     text = re.sub(r"[^A-Za-z0-9]+", "-", text).strip("-").upper()
     return text[:40] or "IMPORT"
@@ -277,16 +280,50 @@ def _csv_field(row, *names):
     return ""
 
 
-def _extract_from_table_rows(rows, default_subject_code):
+def _is_question_header_key(key: str) -> bool:
+    if key in {"QUESTION", "QUESTIONS", "CAU HOI"}:
+        return True
+    if key.startswith("NOI DUNG CAU HOI"):
+        return True
+    return "CAU HOI" in key and "PHUONG AN" not in key
+
+
+def _is_ans_header_key(key: str) -> bool:
+    return key in {"ANS", "ANSWER", "DAP AN"} or key.startswith("DAP AN")
+
+
+def _sheet_marks_tsn(sheet_name: str) -> bool:
+    haystack = _header_key(sheet_name)
+    return bool(
+        re.search(r"(^|[^A-Z0-9])TSN([^A-Z0-9]|$)", haystack)
+        or "TAN SON NHAT" in haystack
+        or "TANSONNHAT" in haystack
+    )
+
+
+def _find_header_column(index, *names, match_prefix=None):
+    for name in names:
+        key = _header_key(name)
+        if key in index:
+            return index[key]
+    if match_prefix:
+        prefix = _header_key(match_prefix)
+        for key, col_idx in index.items():
+            if key.startswith(prefix):
+                return col_idx
+    return None
+
+
+def _extract_from_table_rows(rows, default_subject_code, sheet_name=""):
     if not rows:
         return []
 
-    # detect header row by QUESTION(S) + ANS
+    # detect header row by QUESTION(S) + ANS (also Vietnamese variants)
     header_idx = None
     for i, row in enumerate(rows):
         keys = {_header_key(x) for x in row if _normalize(x)}
-        has_question = bool(keys & {"QUESTION", "QUESTIONS", "CAU HOI", "CÂU HỎI"})
-        has_ans = bool(keys & {"ANS", "ANSWER", "DAP AN", "ĐÁP ÁN"})
+        has_question = any(_is_question_header_key(key) for key in keys)
+        has_ans = any(_is_ans_header_key(key) for key in keys)
         if has_question and has_ans:
             header_idx = i
             break
@@ -296,12 +333,8 @@ def _extract_from_table_rows(rows, default_subject_code):
     headers = [_normalize(x) for x in rows[header_idx]]
     index = {_header_key(h): i for i, h in enumerate(headers) if h}
 
-    def col(*names):
-        for n in names:
-            key = _header_key(n)
-            if key in index:
-                return index[key]
-        return None
+    def col(*names, match_prefix=None):
+        return _find_header_column(index, *names, match_prefix=match_prefix)
 
     c_topic = col(
         "LOẠI KIẾN THỨC (CHUYÊN MÔN/NGHIỆP VỤ)",
@@ -310,21 +343,30 @@ def _extract_from_table_rows(rows, default_subject_code):
         "LOAI KIEN THUC (CHUYEN MON/NGHIEP VU)",
         "LOAI KIEN THUC",
         "LOAI KIEN THUC CHUYEN MON",
+        "PHAN LOAI KIEN THUC",
+        "PHÂN LOẠI KIẾN THỨC",
     )
     c_tt = col("TT", "STT", "TT GOC", "TT GỐC")
-    c_question = col("QUESTION", "QUESTIONS", "CAU HOI", "CÂU HỎI", "CAU HOI")
-    # Answer option headers may be A/B/C/D or numeric 1/2/3/4.
-    c_a = col("A", "1")
-    c_b = col("B", "2")
-    c_c = col("C", "3")
-    c_d = col("D", "4")
-    c_ans = col("ANS", "ANSWER", "DAP AN", "ĐÁP ÁN")
+    c_question = col(
+        "QUESTION",
+        "QUESTIONS",
+        "CAU HOI",
+        "CÂU HỎI",
+        match_prefix="NOI DUNG CAU HOI",
+    )
+    # Answer option headers may be A/B/C/D, 1/2/3/4, or Vietnamese labels.
+    c_a = col("A", "1", "PHUONG AN LUA CHON 1", "PHƯƠNG ÁN LỰA CHỌN 1")
+    c_b = col("B", "2", "PHUONG AN LUA CHON 2", "PHƯƠNG ÁN LỰA CHỌN 2")
+    c_c = col("C", "3", "PHUONG AN LUA CHON 3", "PHƯƠNG ÁN LỰA CHỌN 3")
+    c_d = col("D", "4", "PHUONG AN LUA CHON 4", "PHƯƠNG ÁN LỰA CHỌN 4")
+    c_ans = col("ANS", "ANSWER", "DAP AN", "ĐÁP ÁN", match_prefix="DAP AN")
     # Optional column: rating / RATING (APS, ADC, ACC HAN, SUP).
     c_rating = col("RATING", "rating", "NHOM", "NHÓM", "SUBJECT")
 
     if c_question is None or c_ans is None or c_a is None or c_b is None:
         raise ImportError("Thieu cot bat buoc: QUESTION(S)/ANS va A/B (hoac 1/2).")
 
+    force_tsn_topic = _sheet_marks_tsn(sheet_name)
     extracted = []
     current_topic = ""
     for ridx, row in enumerate(rows[header_idx + 1 :], start=header_idx + 2):
@@ -336,6 +378,9 @@ def _extract_from_table_rows(rows, default_subject_code):
         if explicit_topic:
             current_topic = explicit_topic
         topic = _classify_category(explicit_topic or current_topic or "Khac", question)
+        if force_tsn_topic:
+            # Keep TSN pool detectable via topic even when question text omits TSN.
+            topic = f"{topic} | LTCS Tan Son Nhat" if topic else "LTCS Tan Son Nhat"
         tt = _normalize(row[c_tt] if c_tt is not None and c_tt < len(row) else "")
         raw_rating = _normalize(row[c_rating] if c_rating is not None and c_rating < len(row) else "")
         explicit_ratings = _parse_rating_values(raw_rating)
@@ -366,6 +411,32 @@ def _extract_from_table_rows(rows, default_subject_code):
     return extracted
 
 
+def _iter_worksheet_rows(ws):
+    # Some Excel exporters omit the worksheet dimension metadata. In
+    # read-only mode openpyxl then exposes max_row as None until it scans
+    # the sheet explicitly.
+    if ws.max_row is None:
+        try:
+            ws.calculate_dimension(force=True)
+        except (TypeError, UnboundLocalError, ValueError) as exc:
+            raise ImportError(
+                "Worksheet rong hoac khong xac dinh duoc vung du lieu."
+            ) from exc
+
+    if not ws.max_row:
+        raise ImportError("Worksheet khong co du lieu.")
+
+    return list(
+        ws.iter_rows(
+            min_row=1,
+            max_row=min(ws.max_row, 5000),
+            min_col=1,
+            max_col=20,
+            values_only=True,
+        )
+    )
+
+
 def _read_xlsx_records(path: Path, default_subject_code: str):
     from openpyxl import load_workbook
     from openpyxl.utils.exceptions import InvalidFileException
@@ -376,34 +447,34 @@ def _read_xlsx_records(path: Path, default_subject_code: str):
         raise ImportError(f"Khong the doc file Excel: {exc}") from exc
 
     try:
-        ws = wb.active
-        if ws is None:
+        worksheets = list(getattr(wb, "worksheets", None) or [])
+        if not worksheets and wb.active is not None:
+            worksheets = [wb.active]
+        if not worksheets:
             raise ImportError("File Excel khong co worksheet.")
 
-        # Some Excel exporters omit the worksheet dimension metadata. In
-        # read-only mode openpyxl then exposes max_row as None until it scans
-        # the sheet explicitly.
-        if ws.max_row is None:
+        all_records = []
+        sheet_errors = []
+        for ws in worksheets:
             try:
-                ws.calculate_dimension(force=True)
-            except (TypeError, UnboundLocalError, ValueError) as exc:
-                raise ImportError("Worksheet rong hoac khong xac dinh duoc vung du lieu.") from exc
+                rows = _iter_worksheet_rows(ws)
+                extracted = _extract_from_table_rows(
+                    rows, default_subject_code, sheet_name=getattr(ws, "title", "")
+                )
+            except ImportError as exc:
+                sheet_errors.append(f"{getattr(ws, 'title', '?')}: {exc}")
+                continue
+            # Keep codes unique across sheets in the same workbook.
+            for offset, rec in enumerate(extracted, start=1):
+                rec["row_no"] = len(all_records) + offset
+            all_records.extend(extracted)
 
-        if not ws.max_row:
-            raise ImportError("Worksheet khong co du lieu.")
-
-        rows = list(
-            ws.iter_rows(
-                min_row=1,
-                max_row=min(ws.max_row, 5000),
-                min_col=1,
-                max_col=20,
-                values_only=True,
-            )
-        )
+        if not all_records:
+            detail = "; ".join(sheet_errors) if sheet_errors else "khong co du lieu"
+            raise ImportError(f"Khong doc duoc cau hoi tu Excel ({detail}).")
+        return all_records
     finally:
         wb.close()
-    return _extract_from_table_rows(rows, default_subject_code)
 
 
 def _read_csv_records(path: Path, default_subject_code: str):

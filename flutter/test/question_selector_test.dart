@@ -19,6 +19,10 @@ void main() {
       }
     }
 
+    expect(resolveTsnPercent(tsnAvailable: 40, otherAvailable: 100, total: 100).percent, 35);
+    expect(resolveTsnPercent(tsnAvailable: 30, otherAvailable: 100, total: 100).percent, 25);
+    expect(resolveTsnPercent(tsnAvailable: 16, otherAvailable: 100, total: 100).percent, 15);
+
     for (final entry in {20: 7, 50: 18, 100: 35}.entries) {
       final selected = selectBalancedMockQuestions(
         questions,
@@ -34,6 +38,26 @@ void main() {
     }
   });
 
+  test('falls back to lower TSN percent when pool is small', () {
+    final questions = <QuestionItem>[];
+    var id = 1;
+    for (var index = 0; index < 20; index++) {
+      questions.add(_question(id++, 1, true));
+    }
+    for (var category = 2; category <= 6; category++) {
+      for (var index = 0; index < 30; index++) {
+        questions.add(_question(id++, category, false));
+      }
+    }
+    final selected = selectBalancedMockQuestions(
+      questions,
+      100,
+      random: Random(3),
+    );
+    expect(selected, hasLength(100));
+    expect(selected.where(isTsnQuestion), hasLength(15));
+  });
+
   test('SUP and ACS SUP subjects skip TSN ratio and balance categories', () {
     final questions = <QuestionItem>[];
     var id = 1;
@@ -42,7 +66,7 @@ void main() {
         questions.add(_question(id++, category, category == 1));
       }
     }
-    for (final code in ['SUP', 'ACS SUP HCM', 'SUP ACS HAN']) {
+    for (final code in ['ACC HAN', 'ACS SUP HCM', 'SUP ACS HAN']) {
       final selected = selectBalancedMockQuestions(
         questions,
         20,
@@ -54,6 +78,8 @@ void main() {
       _expectBalanced(selected);
     }
     expect(usesTsnRatio('ADC'), isTrue);
+    expect(usesTsnRatio('APS'), isTrue);
+    expect(usesTsnRatio('SUP'), isTrue);
   });
 
   test('excludes questions from recent sessions and avoids duplicates', () {

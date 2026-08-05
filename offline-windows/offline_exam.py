@@ -9,9 +9,12 @@ from pathlib import Path
 from tkinter import messagebox
 
 QUESTION_COUNTS = (20, 50, 100)
-TSN_PERCENT = 35
+TSN_PERCENT_FALLBACKS = (35, 25, 15)
+TSN_PERCENT = TSN_PERCENT_FALLBACKS[0]
 RECENT_EXAM_EXCLUSION_LIMIT = 6
-CATEGORY_ONLY_SUBJECTS = frozenset({"SUP", "ACS SUP HCM", "SUP ACS HAN"})
+CATEGORY_ONLY_SUBJECTS = frozenset(
+    {"ACC HAN", "ACS SUP HCM", "SUP ACS HAN"}
+)
 
 
 def uses_tsn_ratio(subject_code):
@@ -46,10 +49,26 @@ def is_tsn_question(question):
     )
 
 
-def tsn_target_count(total):
+def tsn_target_count(total, percent=None):
     if total not in QUESTION_COUNTS:
         raise ValueError("Số câu chỉ được chọn 20, 50 hoặc 100.")
-    return int(total * TSN_PERCENT / 100 + 0.5)
+    ratio = TSN_PERCENT if percent is None else percent
+    if ratio not in TSN_PERCENT_FALLBACKS:
+        raise ValueError(f"Tỷ lệ TSN không hợp lệ: {ratio}.")
+    return int(total * ratio / 100 + 0.5)
+
+
+def resolve_tsn_percent(tsn_available, other_available, total):
+    for percent in TSN_PERCENT_FALLBACKS:
+        tsn_need = tsn_target_count(total, percent)
+        other_need = total - tsn_need
+        if tsn_available >= tsn_need and other_available >= other_need:
+            return percent, tsn_need, other_need
+    tried = ", ".join(f"{value}%" for value in TSN_PERCENT_FALLBACKS)
+    raise ValueError(
+        f"Ngân hàng chỉ còn {tsn_available} câu TSN và {other_available} câu ngoài TSN; "
+        f"không đủ để tạo đề {total} câu ở các tỷ lệ {tried}."
+    )
 
 
 def balanced_take(questions, count, rng):
@@ -90,18 +109,11 @@ def select_balanced_exam(pool, total, excluded_ids=None, subject_code=None, rng=
 
     code = subject_code or (available[0].get("subject") if available else None)
     if uses_tsn_ratio(code):
-        tsn_count = tsn_target_count(total)
-        other_count = total - tsn_count
         tsn_pool = [item for item in available if is_tsn_question(item)]
         other_pool = [item for item in available if not is_tsn_question(item)]
-        if len(tsn_pool) < tsn_count:
-            raise ValueError(
-                f"Ngân hàng chỉ còn {len(tsn_pool)} câu TSN; cần {tsn_count} câu."
-            )
-        if len(other_pool) < other_count:
-            raise ValueError(
-                f"Ngân hàng chỉ còn {len(other_pool)} câu ngoài TSN; cần {other_count} câu."
-            )
+        _percent, tsn_count, other_count = resolve_tsn_percent(
+            len(tsn_pool), len(other_pool), total
+        )
         selected = [
             *balanced_take(tsn_pool, tsn_count, rng),
             *balanced_take(other_pool, other_count, rng),
@@ -298,8 +310,8 @@ class OfflineExamApp(tk.Tk):
         tk.Label(
             self.container,
             text=(
-                "APS/ADC/ACC HAN: 35% TSN (7/20, 18/50, 35/100). "
-                "SUP/ACS: chia đều loại kiến thức, không TSN 35%. "
+                "APS/ADC/SUP: ưu tiên 35% TSN, thiếu thì 25% rồi 15%. "
+                "ACC HAN/ACS: chia đều loại kiến thức, không TSN. "
                 "Không lặp 6 bài gần nhất."
             ),
             bg="#0a2a66",
